@@ -1,0 +1,48 @@
+Please input a Hex number:
+a5
+The Dec number:
+165
+Please input a Dec number:
+165
+The Hex number:
+A5
+Please input a Hex number:
+F
+The Dec number:
+15
+Please input a Dec number:
+10
+The Hex number:
+A
+Please input a Hex number:
+9
+The Dec number:
+9
+Please input a Dec number:
+9
+The Hex number:
+9
+Please input a Hex number:
+0
+The Dec number:
+0
+Please input a Dec number:
+0
+The Hex number:
+0
+Please input a Hex number:
+1f
+The Dec number:
+31
+Please input a Dec number:
+31
+The Hex number:
+1F
+Please input a Hex number:
+ff
+The Dec number:
+255
+Please input a Dec number:
+255
+The Hex number:
+FF

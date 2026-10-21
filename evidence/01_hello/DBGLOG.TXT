@@ -1,0 +1,31 @@
+-r
+AX=0000  BX=0000  CX=0000  DX=0000  SP=00FD  BP=0000  SI=0000  DI=0000  
+DS=073F  ES=073F  SS=073F  CS=073F  IP=0100   NV UP EI PL NZ NA PO NC 
+073F:0100 0000          ADD	[BX+SI],AL                         DS:0000=CD
+-e 076a:0 48 65 6c 6c 6f 20 77 6f 72 6c 64 21 0d 0a 24
+-e 076b:0 b8 6a 07 8e d8 ba 00 00 b4 09 cd 21 b8 00 4c cd 21
+-d 076a:0 f
+076A:0000  48 65 6C 6C 6F 20 77 6F-72 6C 64 21 0D 0A 24 00   Hello world!..$.
+-u 076b:0 10
+076B:0000 B86A07        MOV	AX,076A                            
+076B:0003 8ED8          MOV	DS,AX                              
+076B:0005 BA0000        MOV	DX,0000                            
+076B:0008 B409          MOV	AH,09                              
+076B:000A CD21          INT	21                                 
+076B:000C B8004C        MOV	AX,4C00                            
+076B:000F CD21          INT	21                                 
+-r ds
+DS 073F
+:076a
+-r cs
+CS 073F
+:076b
+-r ip
+IP 0100
+:0
+-r
+AX=0000  BX=0000  CX=0000  DX=0000  SP=00FD  BP=0000  SI=0000  DI=0000  
+DS=076A  ES=073F  SS=073F  CS=076B  IP=0000   NV UP EI PL NZ NA PO NC 
+076B:0000 B86A07        MOV	AX,076A                            
+-g
+Hello world!

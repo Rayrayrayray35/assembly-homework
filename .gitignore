@@ -1,0 +1,22 @@
+# build outputs
+build/
+*.OBJ
+*.obj
+*.EXE
+*.exe
+*.LST
+*.lst
+*.MAP
+*.map
+*.CRF
+*.crf
+*.REF
+*.ref
+*.BIN
+*.bin
+
+# editors / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
