@@ -1,0 +1,18 @@
+Turbo C++ Version 3.00 Copyright (c) 1992 Borland International
+mul9g.c:
+Turbo Link  Version 5.0 Copyright (c) 1992 Borland International
+
+	Available memory 4139120
+Turbo C++ Version 3.00 Copyright (c) 1992 Borland International
+mul9l.c:
+Turbo Link  Version 5.0 Copyright (c) 1992 Borland International
+
+	Available memory 4139888
+Turbo C++ Version 3.00 Copyright (c) 1992 Borland International
+mul9g.c:
+
+	Available memory 4140396
+Turbo C++ Version 3.00 Copyright (c) 1992 Borland International
+mul9l.c:
+
+	Available memory 4141164

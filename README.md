@@ -1,6 +1,6 @@
 # 汇编语言课程作业
 
-本仓库收录 8086 汇编语言课程的五次作业：环境搭建与 Hello World、ASCII 表、进制转换、求和、九九乘法表。
+本仓库收录 8086 汇编语言课程的六次作业：环境搭建与 Hello World、ASCII 表、进制转换、求和、九九乘法表、九九乘法表纠错。
 所有程序均已在 **DOSBox 0.74-3 + MASM 5.10 / LINK 3.64**（C 部分使用 **Turbo C 3.0**）下实测通过。
 
 ## 作业一览
@@ -12,6 +12,7 @@
 | 3 | 1~2 位十六进制数 → 十进制；追加十进制 → 十六进制 | 缓冲输入 `0AH`；`值=值×16+位`；除 10 取余、压栈逆序输出 | [`src/03_hex_dec`](src/03_hex_dec) | [`作业3_报告.docx`](reports/作业3_报告.docx) |
 | 4 | 求 `1+2+...+100`，结果分别放寄存器 / 数据段 / 栈；输入 n 求 `1+...+n`；C 实现并反汇编注释 | 16 位运算；`DX:AX ÷ 10`；`09H` 会破坏 `AH` 的坑 | [`src/04_sum`](src/04_sum) | [`作业4_求和_报告.docx`](reports/作业4_求和_报告.docx) |
 | 5 | 输出 9×9 乘法表（题目 4：乘法指令和过程调用） | `CALL/RET`；过程内 `PUSH/POP` 保护 `AX/BX/CX/DX`；`MUL`；双重循环；C 反汇编对照 | [`src/05_mul9`](src/05_mul9) | [`作业5_9x9乘法表_报告.docx`](reports/作业5_9x9乘法表_报告.docx) |
+| 6 | 9×9 乘法表纠错：逐项检查 81 个数据，输出错误位置 | 行优先下标 `(row-1)*9+(col-1)`；`CALL/RET` + 现场保护；数据段寻址；C 全局/局部数组反汇编对比 | [`src/06_mul9_check`](src/06_mul9_check) | [`作业6_九九乘法表纠错_报告.docx`](reports/作业6_九九乘法表纠错_报告.docx) |
 
 ## 目录结构
 
@@ -22,7 +23,8 @@
 │  ├─ 02_ascii/         ascii1.asm（LOOP）、ascii2.asm（DEC/JNZ）、ascii.c
 │  ├─ 03_hex_dec/       exchange.asm
 │  ├─ 04_sum/           sum1/2/3.asm、sumn.asm、sum.c、sum_compiled.asm
-│  └─ 05_mul9/          mul9.asm、mul9.c、mul9c_annotated.asm（乘法表 + 反汇编）
+│  ├─ 05_mul9/          mul9.asm、mul9.c、mul9c_annotated.asm（乘法表 + 反汇编）
+│  └─ 06_mul9_check/    mul9chk.asm、mul9g.c、mul9l.c、全局/局部反汇编注释
 ├─ reports/             Word 报告（提交版）
 │  └─ markdown/         同内容 Markdown，便于在线阅读
 ├─ evidence/            汇编/链接/运行输出（每个作业的实际结果）
@@ -34,7 +36,7 @@
 
 - DOSBox 0.74-3
 - MASM 5.10（`MASM.EXE`）、LINK 3.64（`LINK.EXE`）、DEBUG（`DEBUG.EXE`）
-- Turbo C 3.0（仅作业 2、4、5 的 C 版本使用）
+- Turbo C 3.0（作业 2、4、5、6 的 C 版本使用）
 - 64 位 Windows 不能直接运行 16 位 DOS 程序，必须通过 DOSBox。
 
 DOSBox 中把工作目录挂载为 `C:`：
@@ -78,6 +80,7 @@ EXCHANGE
 - 作业 3：输入 `ff` → 输出 `255`；输入 `255` → 输出 `FF`
 - 作业 4：`1+2+...+100 = 5050`；输入 `n=100` → `5050`
 - 作业 5：输出 9×9 乘法表，9 行逐行递减，结果与题目样例一致
+- 作业 6：按题面数据输出 5 个错误位置 `(1,1)、(2,3)、(4,5)、(6,6)、(8,8)`；C 全局/局部版本输出一致
 
 ## 说明
 
