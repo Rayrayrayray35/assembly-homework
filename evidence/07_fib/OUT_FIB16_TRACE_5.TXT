@@ -1,0 +1,32 @@
+n (1-24): 5
+[in ] n=5 sp=03FC depth=4
+[in ] n=4 sp=03F4 depth=12
+[in ] n=3 sp=03EC depth=20
+[in ] n=2 sp=03E4 depth=28
+[in ] n=1 sp=03DC depth=36
+[out] n=1 sp=03E0 depth=32 F=1
+[in ] n=0 sp=03DC depth=36
+[out] n=0 sp=03E0 depth=32 F=0
+[out] n=2 sp=03E8 depth=24 F=1
+[in ] n=1 sp=03E4 depth=28
+[out] n=1 sp=03E8 depth=24 F=1
+[out] n=3 sp=03F0 depth=16 F=2
+[in ] n=2 sp=03EC depth=20
+[in ] n=1 sp=03E4 depth=28
+[out] n=1 sp=03E8 depth=24 F=1
+[in ] n=0 sp=03E4 depth=28
+[out] n=0 sp=03E8 depth=24 F=0
+[out] n=2 sp=03F0 depth=16 F=1
+[out] n=4 sp=03F8 depth=8 F=3
+[in ] n=3 sp=03F4 depth=12
+[in ] n=2 sp=03EC depth=20
+[in ] n=1 sp=03E4 depth=28
+[out] n=1 sp=03E8 depth=24 F=1
+[in ] n=0 sp=03E4 depth=28
+[out] n=0 sp=03E8 depth=24 F=0
+[out] n=2 sp=03F0 depth=16 F=1
+[in ] n=1 sp=03EC depth=20
+[out] n=1 sp=03F0 depth=16 F=1
+[out] n=3 sp=03F8 depth=8 F=2
+[out] n=5 sp=0400 depth=0 F=5
+F(n) = 5

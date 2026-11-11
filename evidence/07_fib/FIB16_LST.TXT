@@ -1,0 +1,507 @@
+Microsoft (R) Macro Assembler Version 5.10                  11/11/26 16:10:5
+                                                             Page     1-1
+
+
+				;==============================================
+				================
+				; FIB16.ASM  --  16 位字长"朴素双递归"斐波那契 
+				(1 <= n <= 24)
+				;
+				; 用途: 配合作业第 6 条"单步跟踪, 观察每次调用/
+				返回时栈空间变化".
+				;       每层栈帧固定 8 字节, 并且程序会把每次进
+				入/退出时的
+				;       bp、栈深度打印出来, 便于和 DEBUG 的单步
+				结果对照.
+				;
+				; 注意: 16 位无符号数最大 65535, F(24)=46368 可
+				以表示,
+				;       F(25)=75025 已经溢出, 所以本程序只接受 
+				n <= 24.
+				;       完整的 1..100 版本见 FIB.ASM (十进制大?
+				?.
+				;
+				; 栈帧(每层 8 字节):
+				;       [bp+2] 返回地址
+				;       [bp+0] 调用者的 bp
+				;       [bp-2] 局部变量: 保存 F(n-1)
+				;       [bp-4] 保存的 bx
+				;==============================================
+				================
+				
+ = 0008				        TRACEMAX equ 8                  ; n <= 
+				8 时打印调用轨迹
+				
+ 0000				stack   segment stack 'stack'
+ 0000  0200[			        dw 512 dup(0)                   ; 1 KB 
+				栈
+	   0000			
+			 ]	
+				
+ 0400				stack   ends
+				
+ 0000				data    segment
+ 0000  6E 20 28 31 2D 32	prompt  db 'n (1-24): $'
+       34 29 3A 20 24		
+ 000B  0D 0A 46 28 6E 29	resmsg  db 0dh,0ah,'F(n) = $'
+       20 3D 20 24		
+ 0015  0D 0A 6E 20 6D 75	errmsg  db 0dh,0ah,'n must be 1..24',0dh,0ah,'$
+				'
+       73 74 20 62 65 20	
+       31 2E 2E 32 34 0D	
+       0A 24			
+ 0029  0D 0A 24			crlf    db 0dh,0ah,'$'
+ 002C  08 00			inbuf   db 8,0,8 dup(0)
+       0008[			
+	   00			
+			 ]	
+				
+Microsoft (R) Macro Assembler Version 5.10                  11/11/26 16:10:5
+                                                             Page     1-2
+
+
+				
+ 0036  0D 0A 5B 69 6E 20	tin     db 0dh,0ah,'[in ] n=$'
+       5D 20 6E 3D 24		
+ 0041  0D 0A 5B 6F 75 74	tout    db 0dh,0ah,'[out] n=$'
+       5D 20 6E 3D 24		
+ 004C  20 73 70 3D 24		tsp     db ' sp=$'
+ 0051  20 64 65 70 74 68	tdep    db ' depth=$'
+       3D 24			
+ 0059  20 46 3D 24		tf      db ' F=$'
+				
+ 005D  0000			sptop   dw 0                            ; 程序?
+				际钡?SP, 用来算深度
+ 005F  0000			tmpres  dw 0
+ 0061  00			traceon db 0                            ; 1 = ?
+				蛴〉饔霉旒?只在 n<=8 时打开)
+ 0062				data    ends
+				
+ 0000				code    segment
+				        assume cs:code, ds:data, ss:stack
+				
+ 0000				start:
+ 0000  B8 ---- R		        mov  ax,data
+ 0003  8E D8			        mov  ds,ax
+ 0005  89 26 005D R		        mov  sptop,sp                   ; 记录?
+				欢? 后面算深度用
+				
+ 0009  BA 0000 R		        mov  dx,offset prompt
+ 000C  B4 09			        mov  ah,9
+ 000E  CD 21			        int  21h
+				
+ 0010  BA 002C R		        mov  dx,offset inbuf
+ 0013  B4 0A			        mov  ah,0ah
+ 0015  CD 21			        int  21h
+				
+ 0017  E8 0060 R		        call read_n                     ; AX = 
+				n
+ 001A  3D 0001			        cmp  ax,1
+ 001D  72 35			        jb   bad
+ 001F  3D 0018			        cmp  ax,24
+ 0022  77 30			        ja   bad
+ 0024  C6 06 0061 R 00		        mov  traceon,0                  ; 只有?
+				?n 才打印轨迹, 否则输出会爆炸
+ 0029  3D 0008			        cmp  ax,TRACEMAX
+ 002C  77 05			        ja   notrace
+ 002E  C6 06 0061 R 01		        mov  traceon,1
+ 0033				notrace:
+ 0033  8B D8			        mov  bx,ax
+				
+ 0035  E8 0169 R		        call fib16                      ; AX = 
+				F(n)   <-- 递归入口
+				
+ 0038  A3 005F R		        mov  tmpres,ax
+ 003B  BA 000B R		        mov  dx,offset resmsg
+ 003E  B4 09			        mov  ah,9
+Microsoft (R) Macro Assembler Version 5.10                  11/11/26 16:10:5
+                                                             Page     1-3
+
+
+ 0040  CD 21			        int  21h
+ 0042  A1 005F R		        mov  ax,tmpres
+ 0045  E8 009D R		        call putdec
+ 0048  BA 0029 R		        mov  dx,offset crlf
+ 004B  B4 09			        mov  ah,9
+ 004D  CD 21			        int  21h
+				
+ 004F  B8 4C00			        mov  ax,4c00h
+ 0052  CD 21			        int  21h
+ 0054				bad:
+ 0054  BA 0015 R		        mov  dx,offset errmsg
+ 0057  B4 09			        mov  ah,9
+ 0059  CD 21			        int  21h
+ 005B  B8 4C00			        mov  ax,4c00h
+ 005E  CD 21			        int  21h
+				
+				;==============================================
+				================
+				; read_n : 十进制字符串 -> 数值, 出口 AX
+				;==============================================
+				================
+ 0060				read_n  proc
+ 0060  53			        push bx
+ 0061  51			        push cx
+ 0062  52			        push dx
+ 0063  56			        push si
+				
+ 0064  8A 0E 002D R		        mov  cl,inbuf[1]
+ 0068  32 ED			        xor  ch,ch
+ 006A  BE 0002			        mov  si,2
+ 006D  33 DB			        xor  bx,bx
+ 006F  E3 20			        jcxz rn_done
+ 0071				rn_loop:
+ 0071  8A 84 002C R		        mov  al,inbuf[si]
+ 0075  3C 0D			        cmp  al,13                      ; 回车 
+				= 输入结束
+ 0077  74 18			        je   rn_done
+ 0079  2C 30			        sub  al,'0'
+ 007B  3C 09			        cmp  al,9
+ 007D  77 17			        ja   rn_bad
+ 007F  32 E4			        xor  ah,ah
+ 0081  50			        push ax
+ 0082  8B C3			        mov  ax,bx
+ 0084  BA 000A			        mov  dx,10
+ 0087  F7 E2			        mul  dx
+ 0089  8B D8			        mov  bx,ax
+ 008B  58			        pop  ax
+ 008C  03 D8			        add  bx,ax
+ 008E  46			        inc  si
+ 008F  E2 E0			        loop rn_loop
+ 0091				rn_done:
+ 0091  8B C3			        mov  ax,bx
+ 0093  EB 03 90			        jmp  rn_out
+ 0096				rn_bad:
+Microsoft (R) Macro Assembler Version 5.10                  11/11/26 16:10:5
+                                                             Page     1-4
+
+
+ 0096  33 C0			        xor  ax,ax
+ 0098				rn_out:
+ 0098  5E			        pop  si
+ 0099  5A			        pop  dx
+ 009A  59			        pop  cx
+ 009B  5B			        pop  bx
+ 009C  C3			        ret
+ 009D				read_n  endp
+				
+				;==============================================
+				================
+				; putdec : 输出 AX 的十进制值
+				;==============================================
+				================
+ 009D				putdec  proc
+ 009D  50			        push ax
+ 009E  53			        push bx
+ 009F  51			        push cx
+ 00A0  52			        push dx
+ 00A1  BB 000A			        mov  bx,10
+ 00A4  33 C9			        xor  cx,cx
+ 00A6				pd_div:
+ 00A6  33 D2			        xor  dx,dx
+ 00A8  F7 F3			        div  bx                         ; DX:AX
+				 / 10 -> AX 商, DX 余数
+ 00AA  52			        push dx
+ 00AB  41			        inc  cx
+ 00AC  0B C0			        or   ax,ax
+ 00AE  75 F6			        jnz  pd_div
+ 00B0				pd_out:
+ 00B0  5A			        pop  dx
+ 00B1  80 C2 30			        add  dl,'0'
+ 00B4  B4 02			        mov  ah,2
+ 00B6  CD 21			        int  21h
+ 00B8  E2 F6			        loop pd_out
+ 00BA  5A			        pop  dx
+ 00BB  59			        pop  cx
+ 00BC  5B			        pop  bx
+ 00BD  58			        pop  ax
+ 00BE  C3			        ret
+ 00BF				putdec  endp
+				
+				;==============================================
+				================
+				; puthex4 : 输出 AX 的 4 位十六进制 (含前导 0),
+				 用来显示栈指针
+				;==============================================
+				================
+ 00BF				puthex4 proc
+ 00BF  50			        push ax
+ 00C0  53			        push bx
+ 00C1  51			        push cx
+ 00C2  52			        push dx
+ 00C3  8B D8			        mov  bx,ax
+Microsoft (R) Macro Assembler Version 5.10                  11/11/26 16:10:5
+                                                             Page     1-5
+
+
+ 00C5  B9 0004			        mov  cx,4
+ 00C8				ph_loop:
+ 00C8  D1 C3			        rol  bx,1
+ 00CA  D1 C3			        rol  bx,1
+ 00CC  D1 C3			        rol  bx,1
+ 00CE  D1 C3			        rol  bx,1                       ; 高 4 
+				位移到低 4 位
+ 00D0  8A D3			        mov  dl,bl
+ 00D2  80 E2 0F			        and  dl,0fh
+ 00D5  80 C2 30			        add  dl,'0'
+ 00D8  80 FA 39			        cmp  dl,'9'
+ 00DB  76 03			        jbe  ph_out
+ 00DD  80 C2 07			        add  dl,7                       ; A..F
+ 00E0				ph_out:
+ 00E0  B4 02			        mov  ah,2
+ 00E2  CD 21			        int  21h
+ 00E4  E2 E2			        loop ph_loop
+ 00E6  5A			        pop  dx
+ 00E7  59			        pop  cx
+ 00E8  5B			        pop  bx
+ 00E9  58			        pop  ax
+ 00EA  C3			        ret
+ 00EB				puthex4 endp
+				
+				;==============================================
+				================
+				; trace_in : 打印 "进入" 轨迹
+				;   入口: BX = n, DX = 本层 bp (栈帧基址)
+				;==============================================
+				================
+ 00EB				trace_in proc
+ 00EB  50			        push ax
+ 00EC  53			        push bx
+ 00ED  51			        push cx
+ 00EE  52			        push dx
+ 00EF  56			        push si
+ 00F0  8B F2			        mov  si,dx                      ; SI = 
+				本层 bp
+				
+ 00F2  BA 0036 R		        mov  dx,offset tin
+ 00F5  B4 09			        mov  ah,9
+ 00F7  CD 21			        int  21h
+ 00F9  8B C3			        mov  ax,bx
+ 00FB  E8 009D R		        call putdec
+				
+ 00FE  BA 004C R		        mov  dx,offset tsp
+ 0101  B4 09			        mov  ah,9
+ 0103  CD 21			        int  21h
+ 0105  8B C6			        mov  ax,si
+ 0107  E8 00BF R		        call puthex4
+				
+ 010A  BA 0051 R		        mov  dx,offset tdep
+ 010D  B4 09			        mov  ah,9
+ 010F  CD 21			        int  21h
+Microsoft (R) Macro Assembler Version 5.10                  11/11/26 16:10:5
+                                                             Page     1-6
+
+
+ 0111  A1 005D R		        mov  ax,sptop
+ 0114  2B C6			        sub  ax,si                      ; 深度 
+				= 栈顶 - 本层 bp
+ 0116  E8 009D R		        call putdec
+				
+ 0119  5E			        pop  si
+ 011A  5A			        pop  dx
+ 011B  59			        pop  cx
+ 011C  5B			        pop  bx
+ 011D  58			        pop  ax
+ 011E  C3			        ret
+ 011F				trace_in endp
+				
+				;==============================================
+				================
+				; trace_out : 打印 "返回" 轨迹
+				;   入口: BX = n, DX = 本层 bp, AX = F(n)
+				;==============================================
+				================
+ 011F				trace_out proc
+ 011F  50			        push ax
+ 0120  53			        push bx
+ 0121  51			        push cx
+ 0122  52			        push dx
+ 0123  56			        push si
+ 0124  8B F2			        mov  si,dx
+ 0126  A3 005F R		        mov  tmpres,ax
+				
+ 0129  BA 0041 R		        mov  dx,offset tout
+ 012C  B4 09			        mov  ah,9
+ 012E  CD 21			        int  21h
+ 0130  8B C3			        mov  ax,bx
+ 0132  E8 009D R		        call putdec
+				
+ 0135  BA 004C R		        mov  dx,offset tsp
+ 0138  B4 09			        mov  ah,9
+ 013A  CD 21			        int  21h
+ 013C  8B C6			        mov  ax,si
+ 013E  05 0004			        add  ax,4                       ; 返回?
+				蟮?SP = bp+4 (ret 2 + bp 2)
+ 0141  E8 00BF R		        call puthex4
+				
+ 0144  BA 0051 R		        mov  dx,offset tdep
+ 0147  B4 09			        mov  ah,9
+ 0149  CD 21			        int  21h
+ 014B  A1 005D R		        mov  ax,sptop
+ 014E  2B C6			        sub  ax,si
+ 0150  2D 0004			        sub  ax,4                       ; 按返?
+				睾蟮?SP 计算深度
+ 0153  E8 009D R		        call putdec
+				
+ 0156  BA 0059 R		        mov  dx,offset tf
+ 0159  B4 09			        mov  ah,9
+ 015B  CD 21			        int  21h
+Microsoft (R) Macro Assembler Version 5.10                  11/11/26 16:10:5
+                                                             Page     1-7
+
+
+ 015D  A1 005F R		        mov  ax,tmpres
+ 0160  E8 009D R		        call putdec
+				
+ 0163  5E			        pop  si
+ 0164  5A			        pop  dx
+ 0165  59			        pop  cx
+ 0166  5B			        pop  bx
+ 0167  58			        pop  ax
+ 0168  C3			        ret
+ 0169				trace_out endp
+				
+				;==============================================
+				================
+				; fib16 : 朴素双递归  F(n) = F(n-1) + F(n-2)
+				;   入口: AX = n        出口: AX = F(n)
+				;   现场保护: bp/bx 以及调用 trace 时用到的寄存
+				器
+				;==============================================
+				================
+ 0169				fib16   proc
+ 0169  55			        push bp
+ 016A  8B EC			        mov  bp,sp
+ 016C  83 EC 02			        sub  sp,2                       ; [bp-2
+				] = F(n-1)
+ 016F  53			        push bx                         ; BX 是
+				入口参数, 先保护
+ 0170  8B D8			        mov  bx,ax                      ; BX = 
+				n
+				
+ 0172  80 3E 0061 R 00		        cmp  byte ptr traceon,0
+ 0177  74 05			        je   f_body
+ 0179  8B D5			        mov  dx,bp
+ 017B  E8 00EB R		        call trace_in                   ; 打印?
+				牍旒?
+				
+ 017E				f_body:
+ 017E  83 FB 02			        cmp  bx,2
+ 0181  73 05			        jae  f_rec
+ 0183  8B C3			        mov  ax,bx                      ; F(0)=
+				0, F(1)=1
+ 0185  EB 15 90			        jmp  f_exit
+ 0188				f_rec:
+ 0188  8B C3			        mov  ax,bx
+ 018A  48			        dec  ax
+ 018B  E8 0169 R		        call fib16                      ; AX = 
+				F(n-1)
+ 018E  89 46 FE			        mov  [bp-2],ax                  ; 暂存(
+				放栈上, 保证递归安全)
+				
+ 0191  8B C3			        mov  ax,bx
+ 0193  2D 0002			        sub  ax,2
+ 0196  E8 0169 R		        call fib16                      ; AX = 
+				F(n-2)
+				
+Microsoft (R) Macro Assembler Version 5.10                  11/11/26 16:10:5
+                                                             Page     1-8
+
+
+ 0199  03 46 FE			        add  ax,[bp-2]                  ; F(n) 
+				= F(n-1) + F(n-2)
+ 019C				f_exit:
+ 019C  80 3E 0061 R 00		        cmp  byte ptr traceon,0
+ 01A1  74 05			        je   f_ret
+ 01A3  8B D5			        mov  dx,bp
+ 01A5  E8 011F R		        call trace_out                  ; 打印?
+				祷毓旒?
+ 01A8				f_ret:
+ 01A8  5B			        pop  bx                         ; 恢复?
+				饔谜叩?BX
+ 01A9  8B E5			        mov  sp,bp                      ; 丢弃?
+				植勘淞壳?[bp-2]
+ 01AB  5D			        pop  bp
+ 01AC  C3			        ret
+ 01AD				fib16   endp
+				
+ 01AD				code    ends
+				        end start
+Microsoft (R) Macro Assembler Version 5.10                  11/11/26 16:10:5
+                                                             Symbols-1
+
+
+Segments and Groups:
+
+                N a m e         	Length	 Align	Combine Class
+
+CODE . . . . . . . . . . . . . .  	01AD	PARA	NONE	
+DATA . . . . . . . . . . . . . .  	0062	PARA	NONE	
+STACK  . . . . . . . . . . . . .  	0400	PARA	STACK	'STACK'
+
+Symbols:            
+
+                N a m e         	Type	 Value	 Attr
+
+BAD  . . . . . . . . . . . . . .  	L NEAR	0054	CODE
+
+CRLF . . . . . . . . . . . . . .  	L BYTE	0029	DATA
+
+ERRMSG . . . . . . . . . . . . .  	L BYTE	0015	DATA
+
+FIB16  . . . . . . . . . . . . .  	N PROC	0169	CODE	Length = 0044
+F_BODY . . . . . . . . . . . . .  	L NEAR	017E	CODE
+F_EXIT . . . . . . . . . . . . .  	L NEAR	019C	CODE
+F_REC  . . . . . . . . . . . . .  	L NEAR	0188	CODE
+F_RET  . . . . . . . . . . . . .  	L NEAR	01A8	CODE
+
+INBUF  . . . . . . . . . . . . .  	L BYTE	002C	DATA
+
+NOTRACE  . . . . . . . . . . . .  	L NEAR	0033	CODE
+
+PD_DIV . . . . . . . . . . . . .  	L NEAR	00A6	CODE
+PD_OUT . . . . . . . . . . . . .  	L NEAR	00B0	CODE
+PH_LOOP  . . . . . . . . . . . .  	L NEAR	00C8	CODE
+PH_OUT . . . . . . . . . . . . .  	L NEAR	00E0	CODE
+PROMPT . . . . . . . . . . . . .  	L BYTE	0000	DATA
+PUTDEC . . . . . . . . . . . . .  	N PROC	009D	CODE	Length = 0022
+PUTHEX4  . . . . . . . . . . . .  	N PROC	00BF	CODE	Length = 002C
+
+READ_N . . . . . . . . . . . . .  	N PROC	0060	CODE	Length = 003D
+RESMSG . . . . . . . . . . . . .  	L BYTE	000B	DATA
+RN_BAD . . . . . . . . . . . . .  	L NEAR	0096	CODE
+RN_DONE  . . . . . . . . . . . .  	L NEAR	0091	CODE
+RN_LOOP  . . . . . . . . . . . .  	L NEAR	0071	CODE
+RN_OUT . . . . . . . . . . . . .  	L NEAR	0098	CODE
+
+SPTOP  . . . . . . . . . . . . .  	L WORD	005D	DATA
+START  . . . . . . . . . . . . .  	L NEAR	0000	CODE
+
+TDEP . . . . . . . . . . . . . .  	L BYTE	0051	DATA
+TF . . . . . . . . . . . . . . .  	L BYTE	0059	DATA
+TIN  . . . . . . . . . . . . . .  	L BYTE	0036	DATA
+TMPRES . . . . . . . . . . . . .  	L WORD	005F	DATA
+TOUT . . . . . . . . . . . . . .  	L BYTE	0041	DATA
+TRACEMAX . . . . . . . . . . . .  	NUMBER	0008	
+TRACEON  . . . . . . . . . . . .  	L BYTE	0061	DATA
+TRACE_IN . . . . . . . . . . . .  	N PROC	00EB	CODE	Length = 0034
+Microsoft (R) Macro Assembler Version 5.10                  11/11/26 16:10:5
+                                                             Symbols-2
+
+
+TRACE_OUT  . . . . . . . . . . .  	N PROC	011F	CODE	Length = 004A
+TSP  . . . . . . . . . . . . . .  	L BYTE	004C	DATA
+
+@CPU . . . . . . . . . . . . . .  	TEXT  0101h		
+@FILENAME  . . . . . . . . . . .  	TEXT  FIB16		
+@VERSION . . . . . . . . . . . .  	TEXT  510		
+
+
+    331 Source  Lines
+    331 Total   Lines
+     43 Symbols
+
+  47882 + 445025 Bytes symbol space free
+
+      0 Warning Errors
+      0 Severe  Errors

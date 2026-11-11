@@ -1,0 +1,128 @@
+Microsoft (R) Macro Assembler Version 5.10                  11/11/26 16:07:0
+                                                             Page     1-1
+
+
+				;==============================================
+				================
+				; FIB_DBG.ASM  --  供 DEBUG 单步/断点观察递归栈
+				变化的最小程序
+				;
+				; 只保留递归过程本身, 去掉全部输入输出, 这样在 
+				DEBUG 里
+				; 下断点、单步时不会被 INT 21H 的输入输出干扰.
+				; n 固定为 5 (F(5)=5), 结果存入 result.
+				;
+				; 每层栈帧 8 字节:
+				;       [bp+2] 返回地址   [bp+0] 旧 bp
+				;       [bp-2] F(n-1)     [bp-4] 旧 bx
+				;==============================================
+				================
+ 0000				stack   segment stack 'stack'
+ 0000  0100[			        dw 256 dup(0)
+	   0000			
+			 ]	
+				
+ 0200				stack   ends
+				
+ 0000				data    segment
+ 0000  0005			nval    dw 5
+ 0002  0000			result  dw 0
+ 0004				data    ends
+				
+ 0000				code    segment
+				        assume cs:code, ds:data, ss:stack
+				
+ 0000				start:
+ 0000  B8 ---- R		        mov  ax,data
+ 0003  8E D8			        mov  ds,ax
+ 0005  A1 0000 R		        mov  ax,nval                    ; AX = 
+				5
+ 0008  E8 0013 R		        call fib16
+ 000B  A3 0002 R		        mov  result,ax                  ; resul
+				t = F(5)
+ 000E  B8 4C00			        mov  ax,4c00h
+ 0011  CD 21			        int  21h
+				
+				;----------------------------------------------
+				----------------
+				; fib16 : F(n) = F(n-1) + F(n-2), 入口 AX=n, 出
+				口 AX=F(n)
+				;----------------------------------------------
+				----------------
+ 0013				fib16   proc
+ 0013  55			        push bp
+ 0014  8B EC			        mov  bp,sp
+ 0016  83 EC 02			        sub  sp,2                       ; 局部?
+				淞?[bp-2]
+ 0019  53			        push bx
+ 001A  8B D8			        mov  bx,ax                      ; BX = 
+Microsoft (R) Macro Assembler Version 5.10                  11/11/26 16:07:0
+                                                             Page     1-2
+
+
+				n
+				
+ 001C  83 FB 02			        cmp  bx,2
+ 001F  73 05			        jae  f_rec
+ 0021  8B C3			        mov  ax,bx                      ; F(0)=
+				0, F(1)=1
+ 0023  EB 15 90			        jmp  f_exit
+ 0026				f_rec:
+ 0026  8B C3			        mov  ax,bx
+ 0028  48			        dec  ax
+ 0029  E8 0013 R		        call fib16                      ; AX = 
+				F(n-1)
+ 002C  89 46 FE			        mov  [bp-2],ax
+ 002F  8B C3			        mov  ax,bx
+ 0031  2D 0002			        sub  ax,2
+ 0034  E8 0013 R		        call fib16                      ; AX = 
+				F(n-2)
+ 0037  03 46 FE			        add  ax,[bp-2]
+ 003A				f_exit:
+ 003A  5B			        pop  bx
+ 003B  8B E5			        mov  sp,bp
+ 003D  5D			        pop  bp
+ 003E  C3			        ret
+ 003F				fib16   endp
+				
+ 003F				code    ends
+				        end start
+Microsoft (R) Macro Assembler Version 5.10                  11/11/26 16:07:0
+                                                             Symbols-1
+
+
+Segments and Groups:
+
+                N a m e         	Length	 Align	Combine Class
+
+CODE . . . . . . . . . . . . . .  	003F	PARA	NONE	
+DATA . . . . . . . . . . . . . .  	0004	PARA	NONE	
+STACK  . . . . . . . . . . . . .  	0200	PARA	STACK	'STACK'
+
+Symbols:            
+
+                N a m e         	Type	 Value	 Attr
+
+FIB16  . . . . . . . . . . . . .  	N PROC	0013	CODE	Length = 002C
+F_EXIT . . . . . . . . . . . . .  	L NEAR	003A	CODE
+F_REC  . . . . . . . . . . . . .  	L NEAR	0026	CODE
+
+NVAL . . . . . . . . . . . . . .  	L WORD	0000	DATA
+
+RESULT . . . . . . . . . . . . .  	L WORD	0002	DATA
+
+START  . . . . . . . . . . . . .  	L NEAR	0000	CODE
+
+@CPU . . . . . . . . . . . . . .  	TEXT  0101h		
+@FILENAME  . . . . . . . . . . .  	TEXT  FIB_DBG		
+@VERSION . . . . . . . . . . . .  	TEXT  510		
+
+
+     64 Source  Lines
+     64 Total   Lines
+     14 Symbols
+
+  47868 + 461423 Bytes symbol space free
+
+      0 Warning Errors
+      0 Severe  Errors

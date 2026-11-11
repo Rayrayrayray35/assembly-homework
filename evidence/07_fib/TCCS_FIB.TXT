@@ -1,0 +1,4 @@
+Turbo C++ Version 3.00 Copyright (c) 1992 Borland International
+cfib.c:
+
+	Available memory 4143492
