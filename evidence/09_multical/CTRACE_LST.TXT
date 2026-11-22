@@ -1,0 +1,634 @@
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Page     1-1
+
+
+				;==============================================
+				================
+				; CALLTRACE.ASM -- µ¥²½¹Û²ì CALL/RET Ç°ºóµÄ CS¡
+				¢IP¡¢SP ºÍÕ»ÄÚÈÝ
+				;
+				; Êä³öÈý×é×´Ì¬:
+				;   near before / near entry / near after
+				;   far  before / far  entry / far  after
+				;
+				; near entry Ê± [SP] ÊÇ·µ»Ø IP, CS ²»±ä;
+				; far  entry Ê± [SP] ÊÇ·µ»Ø IP, [SP+2] ÊÇ·µ»Ø C
+				S, CS ÒÑÇÐ»».
+				;
+				; ËµÃ÷: ´òÓ¡µÄ IP ÊÇ"µ÷ÓÃµã±êÇ©µÄÆ«ÒÆ", ·½±ã¶ÔÕ
+				Õ;
+				;       Õ»ÀïµÄ [SP]/[SP+2] ²ÅÊÇ CPU Êµ¼ÊÑ¹ÈëµÄ·
+				µ»ØµØÖ·.
+				;==============================================
+				================
+				
+				        .8086
+				        include CALMAC.INC
+			     C	;==============================================
+				================
+			     C	; CALMAC.INC -- ¶àÄ£¿éÈÕÀú×÷ÒµµÄºê¶¨Òå
+			     C	;
+			     C	; MASM 5.10 µÄºêÔÚ»ã±àÊ±Õ¹¿ª£¬²»²úÉú CALL/RET£¬
+				Òò´Ë±È¹ý³Ìµ÷ÓÃ
+			     C	; ¸ü¿ì£¬µ«»áÔö´ó´úÂëÌå»ý¡£±¾ÎÄ¼þ±» CALMAIN/CALD
+				ATE/CALDISP
+			     C	; Èý¸öÄ£¿é¹²Í¬°üº¬¡£
+			     C	;==============================================
+				================
+			     C	
+			     C	;----------------------------------------------
+				----------------
+			     C	; PRINTSTR msg : Êä³ö DS:DX Ö¸ÏòµÄ '$' ½áÎ²×Ö·û
+				´®
+			     C	;   Õ¹¿ªºóÊÇ 3 ÌõÖ¸Áî£¬²»Ñ¹Õ»¡¢²»µ÷ÓÃ¹ý³Ì
+			     C	;----------------------------------------------
+				----------------
+			     C	PRINTSTR macro msg
+			     C	        mov  dx,offset msg
+			     C	        mov  ah,9
+			     C	        int  21h
+			     C	endm
+			     C	
+			     C	;----------------------------------------------
+				----------------
+			     C	; NEWLINE : Êä³ö CR LF
+			     C	;----------------------------------------------
+				----------------
+			     C	NEWLINE macro
+			     C	        push ax
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Page     1-2
+
+
+			     C	        push dx
+			     C	        mov  dl,13
+			     C	        mov  ah,2
+			     C	        int  21h
+			     C	        mov  dl,10
+			     C	        mov  ah,2
+			     C	        int  21h
+			     C	        pop  dx
+			     C	        pop  ax
+			     C	endm
+			     C	
+			     C	;----------------------------------------------
+				----------------
+			     C	; SAVEREGS / RESTOREREGS : ¹ý³ÌÈë¿Ú/³ö¿Ú±£»¤ 6 
+				¸ö³£ÓÃ¼Ä´æÆ÷
+			     C	;----------------------------------------------
+				----------------
+			     C	SAVEREGS macro
+			     C	        push ax
+			     C	        push bx
+			     C	        push cx
+			     C	        push dx
+			     C	        push si
+			     C	        push di
+			     C	endm
+			     C	
+			     C	RESTOREREGS macro
+			     C	        pop  di
+			     C	        pop  si
+			     C	        pop  dx
+			     C	        pop  cx
+			     C	        pop  bx
+			     C	        pop  ax
+			     C	endm
+			     C	
+			     C	;----------------------------------------------
+				----------------
+			     C	; PROLOG / EPILOG : ½ü¹ý³ÌµÄ±ê×¼Õ»Ö¡
+			     C	;   PROLOG Õ¹¿ªÎª push bp / mov bp,sp
+			     C	;   EPILOG Õ¹¿ªÎª pop bp / ret
+			     C	;----------------------------------------------
+				----------------
+			     C	PROLOG macro
+			     C	        push bp
+			     C	        mov  bp,sp
+			     C	endm
+			     C	
+			     C	EPILOG macro
+			     C	        pop  bp
+			     C	        ret
+			     C	endm
+				
+ 0000				DATA    segment para public 'DATA'
+ 0000  6E 65 61 72 20 62	l_near_before db 'near before: $'
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Page     1-3
+
+
+       65 66 6F 72 65 3A	
+       20 24			
+ 000E  6E 65 61 72 20 65	l_near_entry  db 'near entry : $'
+       6E 74 72 79 20 3A	
+       20 24			
+ 001C  6E 65 61 72 20 61	l_near_after  db 'near after : $'
+       66 74 65 72 20 3A	
+       20 24			
+ 002A  66 61 72 20 20 62	l_far_before  db 'far  before: $'
+       65 66 6F 72 65 3A	
+       20 24			
+ 0038  66 61 72 20 20 65	l_far_entry   db 'far  entry : $'
+       6E 74 72 79 20 3A	
+       20 24			
+ 0046  66 61 72 20 20 61	l_far_after   db 'far  after : $'
+       66 74 65 72 20 3A	
+       20 24			
+				
+ 0054  20 43 53 3D 24		s_cs    db ' CS=$'
+ 0059  20 49 50 3D 24		s_ip    db ' IP=$'
+ 005E  20 53 50 3D 24		s_sp    db ' SP=$'
+ 0063  20 5B 53 50 5D 3D	s_st0   db ' [SP]=$'
+       24			
+ 006A  20 5B 53 50 2B 32	s_st2   db ' [SP+2]=$'
+       5D 3D 24			
+ 0073  0D 0A 24			crlf    db 13,10,'$'
+ 0076  0005[			hexbuf  db 5 dup('$')
+	   24			
+			 ]	
+				
+ 007B  0000			savedip dw 0
+ 007D  0000			savedsp dw 0
+ 007F  0000			stkptr  dw 0
+ 0081				DATA    ends
+				
+ 0000				STACK   segment stack 'STACK'
+ 0000  0100[			        dw 256 dup(0)
+	   0000			
+			 ]	
+				
+ 0200				STACK   ends
+				
+ 0000				CSEG    segment para public 'CODE'
+				        assume cs:CSEG, ds:DATA, ss:STACK
+				
+ 0000				start:
+ 0000  B8 ---- R		        mov  ax,DATA
+ 0003  8E D8			        mov  ds,ax
+				
+				;---------------- ½üµ÷ÓÃÇ° ----------------
+ 0005				n_before:
+ 0005  8B DC			        mov  bx,sp
+ 0007  BA 0000 R		        mov  dx,offset l_near_before
+ 000A  B8 0005 R		        mov  ax,offset n_before
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Page     1-4
+
+
+ 000D  E8 004F R		        call showstate
+				
+ 0010  E8 003E R		        call nearproc               ; E8
+				
+				;---------------- ½üµ÷ÓÃºó ----------------
+ 0013				n_after:
+ 0013  8B DC			        mov  bx,sp
+ 0015  BA 001C R		        mov  dx,offset l_near_after
+ 0018  B8 0013 R		        mov  ax,offset n_after
+ 001B  E8 004F R		        call showstate
+				
+				;---------------- Ô¶µ÷ÓÃÇ° ----------------
+ 001E				f_before:
+ 001E  8B DC			        mov  bx,sp
+ 0020  BA 002A R		        mov  dx,offset l_far_before
+ 0023  B8 001E R		        mov  ax,offset f_before
+ 0026  E8 004F R		        call showstate
+				
+ 0029  9A 0000 ---- R		        call far ptr farproc        ; 9A
+				
+				;---------------- Ô¶µ÷ÓÃºó ----------------
+ 002E				f_after:
+ 002E  8B DC			        mov  bx,sp
+ 0030  BA 0046 R		        mov  dx,offset l_far_after
+ 0033  B8 002E R		        mov  ax,offset f_after
+ 0036  E8 004F R		        call showstate
+				
+ 0039  B8 4C00			        mov  ax,4c00h
+ 003C  CD 21			        int  21h
+				
+				;----------------------------------------------
+				----------------
+				; nearproc : ½ü¹ý³Ì, Èë¿Ú [SP]=·µ»Ø IP
+				;----------------------------------------------
+				----------------
+ 003E				nearproc proc near
+ 003E  8B DC			        mov  bx,sp
+ 0040  BA 000E R		        mov  dx,offset l_near_entry
+ 0043  B8 003E R		        mov  ax,offset nearproc
+ 0046  E8 004F R		        call showstate
+				
+ 0049  8B DC			        mov  bx,sp
+ 004B  E8 0092 R		        call showstack2
+ 004E  C3			        ret                         ; C3
+ 004F				nearproc endp
+				
+				;----------------------------------------------
+				----------------
+				; showstate : DX=±êÇ©, AX=IP, BX=SP
+				;----------------------------------------------
+				----------------
+ 004F				showstate proc near
+ 004F  50			        push ax
+ 0050  53			        push bx
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Page     1-5
+
+
+ 0051  51			        push cx
+ 0052  52			        push dx
+ 0053  56			        push si
+				
+ 0054  89 1E 007D R		        mov  savedsp,bx             ; ÏÈ´æµ½ÄÚ´
+				æ, ·ÀÖ¹ INT 21H ÆÆ»µ¼Ä´æÆ÷
+ 0058  A3 007B R		        mov  savedip,ax
+				
+ 005B  B4 09			        mov  ah,9
+ 005D  CD 21			        int  21h                    ; ´òÓ¡ DX Ö
+				¸ÏòµÄ±êÇ©
+				
+ 005F  BA 0054 R		        mov  dx,offset s_cs
+ 0062  B4 09			        mov  ah,9
+ 0064  CD 21			        int  21h
+ 0066  8C C8			        mov  ax,cs
+ 0068  E8 00C0 R		        call puthex16
+				
+ 006B  BA 0059 R		        mov  dx,offset s_ip
+ 006E  B4 09			        mov  ah,9
+ 0070  CD 21			        int  21h
+ 0072  A1 007B R		        mov  ax,savedip
+ 0075  E8 00C0 R		        call puthex16
+				
+ 0078  BA 005E R		        mov  dx,offset s_sp
+ 007B  B4 09			        mov  ah,9
+ 007D  CD 21			        int  21h
+ 007F  A1 007D R		        mov  ax,savedsp
+ 0082  E8 00C0 R		        call puthex16
+				
+ 0085  BA 0073 R		        mov  dx,offset crlf
+ 0088  B4 09			        mov  ah,9
+ 008A  CD 21			        int  21h
+				
+ 008C  5E			        pop  si
+ 008D  5A			        pop  dx
+ 008E  59			        pop  cx
+ 008F  5B			        pop  bx
+ 0090  58			        pop  ax
+ 0091  C3			        ret
+ 0092				showstate endp
+				
+				;----------------------------------------------
+				----------------
+				; showstack2 : BX=Õ»Ö¸Õë, ´òÓ¡ [BX] ºÍ [BX+2]
+				;----------------------------------------------
+				----------------
+ 0092				showstack2 proc near
+ 0092  50			        push ax
+ 0093  53			        push bx
+ 0094  52			        push dx
+ 0095  56			        push si
+				
+ 0096  55			        push bp
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Page     1-6
+
+
+ 0097  8B EB			        mov  bp,bx
+				
+ 0099  BA 0063 R		        mov  dx,offset s_st0
+ 009C  B4 09			        mov  ah,9
+ 009E  CD 21			        int  21h
+ 00A0  8B 46 00			        mov  ax,[bp]
+ 00A3  E8 00C0 R		        call puthex16
+				
+ 00A6  BA 006A R		        mov  dx,offset s_st2
+ 00A9  B4 09			        mov  ah,9
+ 00AB  CD 21			        int  21h
+ 00AD  8B 46 02			        mov  ax,[bp+2]
+ 00B0  E8 00C0 R		        call puthex16
+				
+ 00B3  BA 0073 R		        mov  dx,offset crlf
+ 00B6  B4 09			        mov  ah,9
+ 00B8  CD 21			        int  21h
+				
+ 00BA  5D			        pop  bp
+ 00BB  5E			        pop  si
+ 00BC  5A			        pop  dx
+ 00BD  5B			        pop  bx
+ 00BE  58			        pop  ax
+ 00BF  C3			        ret
+ 00C0				showstack2 endp
+				
+				;----------------------------------------------
+				----------------
+				; puthex16 : AX -> 4 Î»Ê®Áù½øÖÆ
+				;----------------------------------------------
+				----------------
+ 00C0				puthex16 proc near
+ 00C0  50			        push ax
+ 00C1  53			        push bx
+ 00C2  51			        push cx
+ 00C3  52			        push dx
+ 00C4  56			        push si
+				
+ 00C5  8B D8			        mov  bx,ax
+ 00C7  BE 0076 R		        mov  si,offset hexbuf
+ 00CA  B9 0004			        mov  cx,4
+ 00CD				ph_loop:
+ 00CD  D1 C3			        rol  bx,1
+ 00CF  D1 C3			        rol  bx,1
+ 00D1  D1 C3			        rol  bx,1
+ 00D3  D1 C3			        rol  bx,1
+ 00D5  8A C3			        mov  al,bl
+ 00D7  24 0F			        and  al,0Fh
+ 00D9  3C 09			        cmp  al,9
+ 00DB  76 02			        jbe  ph_dec
+ 00DD  04 07			        add  al,7
+ 00DF				ph_dec:
+ 00DF  04 30			        add  al,'0'
+ 00E1  88 04			        mov  [si],al
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Page     1-7
+
+
+ 00E3  46			        inc  si
+ 00E4  E2 E7			        loop ph_loop
+				
+ 00E6  C6 04 24			        mov  byte ptr [si],'$'
+ 00E9  BA 0076 R		        mov  dx,offset hexbuf
+ 00EC  B4 09			        mov  ah,9
+ 00EE  CD 21			        int  21h
+				
+ 00F0  5E			        pop  si
+ 00F1  5A			        pop  dx
+ 00F2  59			        pop  cx
+ 00F3  5B			        pop  bx
+ 00F4  58			        pop  ax
+ 00F5  C3			        ret
+ 00F6				puthex16 endp
+				
+ 00F6				CSEG    ends
+				
+ 0000				FCODE   segment para public 'CODE'
+				        assume cs:FCODE, ds:DATA, ss:STACK
+				
+				;----------------------------------------------
+				----------------
+				; farproc : Ô¶¹ý³Ì, Èë¿Ú [SP]=·µ»Ø IP, [SP+2]=·
+				µ»Ø CS
+				;
+				; ×¢Òâ: ÏÂÃæµÄ f_showstate/f_showstack2/f_puthe
+				x16 ÊÇ CSEG Àï
+				; Í¬Ãû¹ý³ÌµÄ¸±±¾. ÒòÎª FCODE Óë CSEG ÊÇ²»Í¬¶Î, 
+				²»ÄÜ½üµ÷ÓÃ
+				; CSEG ÀïµÄ¹ý³Ì; ÒªÃ´Ô¶µ÷ÓÃ(»á¶àÑ¹ CS:IP, ¸ÉÈÅÕ
+				»¹Û²ì), ÒªÃ´
+				; ÔÚ±¾¶Î¸´ÖÆÒ»·Ý. ÕâÀïÑ¡Ôñ¸´ÖÆ, ±£Ö¤¹Û²ìµ½µÄ SP
+				 ¾ÍÊÇ farproc
+				; ¸Õ½øÈëÊ±µÄ SP.
+				;----------------------------------------------
+				----------------
+ 0000				farproc proc far
+ 0000  8B DC			        mov  bx,sp
+ 0002  BA 0038 R		        mov  dx,offset l_far_entry
+ 0005  B8 0000 R		        mov  ax,offset farproc
+ 0008  E8 0011 R		        call f_showstate
+				
+ 000B  8B DC			        mov  bx,sp
+ 000D  E8 0054 R		        call f_showstack2
+ 0010  CB			        ret                         ; CB (RETF)
+ 0011				farproc endp
+				
+				;----------------------------------------------
+				----------------
+				; f_showstate : DX=±êÇ©, AX=IP, BX=SP (FCODE °æ
+				)
+				;----------------------------------------------
+				----------------
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Page     1-8
+
+
+ 0011				f_showstate proc near
+ 0011  50			        push ax
+ 0012  53			        push bx
+ 0013  51			        push cx
+ 0014  52			        push dx
+ 0015  56			        push si
+				
+ 0016  89 1E 007D R		        mov  savedsp,bx             ; ÏÈ´æµ½ÄÚ´
+				æ, ·ÀÖ¹ INT 21H ÆÆ»µ¼Ä´æÆ÷
+ 001A  A3 007B R		        mov  savedip,ax
+				
+ 001D  B4 09			        mov  ah,9
+ 001F  CD 21			        int  21h
+				
+ 0021  BA 0054 R		        mov  dx,offset s_cs
+ 0024  B4 09			        mov  ah,9
+ 0026  CD 21			        int  21h
+ 0028  8C C8			        mov  ax,cs
+ 002A  E8 0082 R		        call f_puthex16
+				
+ 002D  BA 0059 R		        mov  dx,offset s_ip
+ 0030  B4 09			        mov  ah,9
+ 0032  CD 21			        int  21h
+ 0034  A1 007B R		        mov  ax,savedip
+ 0037  E8 0082 R		        call f_puthex16
+				
+ 003A  BA 005E R		        mov  dx,offset s_sp
+ 003D  B4 09			        mov  ah,9
+ 003F  CD 21			        int  21h
+ 0041  A1 007D R		        mov  ax,savedsp
+ 0044  E8 0082 R		        call f_puthex16
+				
+ 0047  BA 0073 R		        mov  dx,offset crlf
+ 004A  B4 09			        mov  ah,9
+ 004C  CD 21			        int  21h
+				
+ 004E  5E			        pop  si
+ 004F  5A			        pop  dx
+ 0050  59			        pop  cx
+ 0051  5B			        pop  bx
+ 0052  58			        pop  ax
+ 0053  C3			        ret
+ 0054				f_showstate endp
+				
+				;----------------------------------------------
+				----------------
+				; f_showstack2 : BX=Õ»Ö¸Õë, ´òÓ¡ [BX] ºÍ [BX+2]
+				 (FCODE °æ)
+				;----------------------------------------------
+				----------------
+ 0054				f_showstack2 proc near
+ 0054  50			        push ax
+ 0055  53			        push bx
+ 0056  52			        push dx
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Page     1-9
+
+
+ 0057  56			        push si
+				
+ 0058  55			        push bp
+ 0059  8B EB			        mov  bp,bx
+				
+ 005B  BA 0063 R		        mov  dx,offset s_st0
+ 005E  B4 09			        mov  ah,9
+ 0060  CD 21			        int  21h
+ 0062  8B 46 00			        mov  ax,[bp]
+ 0065  E8 0082 R		        call f_puthex16
+				
+ 0068  BA 006A R		        mov  dx,offset s_st2
+ 006B  B4 09			        mov  ah,9
+ 006D  CD 21			        int  21h
+ 006F  8B 46 02			        mov  ax,[bp+2]
+ 0072  E8 0082 R		        call f_puthex16
+				
+ 0075  BA 0073 R		        mov  dx,offset crlf
+ 0078  B4 09			        mov  ah,9
+ 007A  CD 21			        int  21h
+				
+ 007C  5D			        pop  bp
+ 007D  5E			        pop  si
+ 007E  5A			        pop  dx
+ 007F  5B			        pop  bx
+ 0080  58			        pop  ax
+ 0081  C3			        ret
+ 0082				f_showstack2 endp
+				
+				;----------------------------------------------
+				----------------
+				; f_puthex16 : AX -> 4 Î»Ê®Áù½øÖÆ (FCODE °æ)
+				;----------------------------------------------
+				----------------
+ 0082				f_puthex16 proc near
+ 0082  50			        push ax
+ 0083  53			        push bx
+ 0084  51			        push cx
+ 0085  52			        push dx
+ 0086  56			        push si
+				
+ 0087  8B D8			        mov  bx,ax
+ 0089  BE 0076 R		        mov  si,offset hexbuf
+ 008C  B9 0004			        mov  cx,4
+ 008F				f_ph_loop:
+ 008F  D1 C3			        rol  bx,1
+ 0091  D1 C3			        rol  bx,1
+ 0093  D1 C3			        rol  bx,1
+ 0095  D1 C3			        rol  bx,1
+ 0097  8A C3			        mov  al,bl
+ 0099  24 0F			        and  al,0Fh
+ 009B  3C 09			        cmp  al,9
+ 009D  76 02			        jbe  f_ph_dec
+ 009F  04 07			        add  al,7
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Page     1-10
+
+
+ 00A1				f_ph_dec:
+ 00A1  04 30			        add  al,'0'
+ 00A3  88 04			        mov  [si],al
+ 00A5  46			        inc  si
+ 00A6  E2 E7			        loop f_ph_loop
+				
+ 00A8  C6 04 24			        mov  byte ptr [si],'$'
+ 00AB  BA 0076 R		        mov  dx,offset hexbuf
+ 00AE  B4 09			        mov  ah,9
+ 00B0  CD 21			        int  21h
+				
+ 00B2  5E			        pop  si
+ 00B3  5A			        pop  dx
+ 00B4  59			        pop  cx
+ 00B5  5B			        pop  bx
+ 00B6  58			        pop  ax
+ 00B7  C3			        ret
+ 00B8				f_puthex16 endp
+				
+ 00B8				FCODE   ends
+				
+				        end start
+
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Symbols-1
+
+
+Macros:
+
+		N a m e			Lines
+
+EPILOG . . . . . . . . . . . . .  	   2
+NEWLINE  . . . . . . . . . . . .  	  10
+PRINTSTR . . . . . . . . . . . .  	   3
+PROLOG . . . . . . . . . . . . .  	   2
+RESTOREREGS  . . . . . . . . . .  	   6
+SAVEREGS . . . . . . . . . . . .  	   6
+
+Segments and Groups:
+
+                N a m e         	Length	 Align	Combine Class
+
+CSEG . . . . . . . . . . . . . .  	00F6	PARA	PUBLIC	'CODE'
+DATA . . . . . . . . . . . . . .  	0081	PARA	PUBLIC	'DATA'
+FCODE  . . . . . . . . . . . . .  	00B8	PARA	PUBLIC	'CODE'
+STACK  . . . . . . . . . . . . .  	0200	PARA	STACK	'STACK'
+
+Symbols:            
+
+                N a m e         	Type	 Value	 Attr
+
+CRLF . . . . . . . . . . . . . .  	L BYTE	0073	DATA
+
+FARPROC  . . . . . . . . . . . .  	F PROC	0000	FCODE	Length = 0011
+F_AFTER  . . . . . . . . . . . .  	L NEAR	002E	CSEG
+F_BEFORE . . . . . . . . . . . .  	L NEAR	001E	CSEG
+F_PH_DEC . . . . . . . . . . . .  	L NEAR	00A1	FCODE
+F_PH_LOOP  . . . . . . . . . . .  	L NEAR	008F	FCODE
+F_PUTHEX16 . . . . . . . . . . .  	N PROC	0082	FCODE	Length = 0036
+F_SHOWSTACK2 . . . . . . . . . .  	N PROC	0054	FCODE	Length = 002E
+F_SHOWSTATE  . . . . . . . . . .  	N PROC	0011	FCODE	Length = 0043
+
+HEXBUF . . . . . . . . . . . . .  	L BYTE	0076	DATA	Length = 0005
+
+L_FAR_AFTER  . . . . . . . . . .  	L BYTE	0046	DATA
+L_FAR_BEFORE . . . . . . . . . .  	L BYTE	002A	DATA
+L_FAR_ENTRY  . . . . . . . . . .  	L BYTE	0038	DATA
+L_NEAR_AFTER . . . . . . . . . .  	L BYTE	001C	DATA
+L_NEAR_BEFORE  . . . . . . . . .  	L BYTE	0000	DATA
+L_NEAR_ENTRY . . . . . . . . . .  	L BYTE	000E	DATA
+
+NEARPROC . . . . . . . . . . . .  	N PROC	003E	CSEG	Length = 0011
+N_AFTER  . . . . . . . . . . . .  	L NEAR	0013	CSEG
+N_BEFORE . . . . . . . . . . . .  	L NEAR	0005	CSEG
+
+PH_DEC . . . . . . . . . . . . .  	L NEAR	00DF	CSEG
+PH_LOOP  . . . . . . . . . . . .  	L NEAR	00CD	CSEG
+PUTHEX16 . . . . . . . . . . . .  	N PROC	00C0	CSEG	Length = 0036
+
+SAVEDIP  . . . . . . . . . . . .  	L WORD	007B	DATA
+SAVEDSP  . . . . . . . . . . . .  	L WORD	007D	DATA
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Symbols-2
+
+
+SHOWSTACK2 . . . . . . . . . . .  	N PROC	0092	CSEG	Length = 002E
+SHOWSTATE  . . . . . . . . . . .  	N PROC	004F	CSEG	Length = 0043
+START  . . . . . . . . . . . . .  	L NEAR	0000	CSEG
+STKPTR . . . . . . . . . . . . .  	L WORD	007F	DATA
+S_CS . . . . . . . . . . . . . .  	L BYTE	0054	DATA
+S_IP . . . . . . . . . . . . . .  	L BYTE	0059	DATA
+S_SP . . . . . . . . . . . . . .  	L BYTE	005E	DATA
+S_ST0  . . . . . . . . . . . . .  	L BYTE	0063	DATA
+S_ST2  . . . . . . . . . . . . .  	L BYTE	006A	DATA
+
+@CPU . . . . . . . . . . . . . .  	TEXT  257		
+@FILENAME  . . . . . . . . . . .  	TEXT  CTRACE		
+@VERSION . . . . . . . . . . . .  	TEXT  510		
+
+
+    442 Source  Lines
+    442 Total   Lines
+     49 Symbols
+
+  47802 + 438961 Bytes symbol space free
+
+      0 Warning Errors
+      0 Severe  Errors

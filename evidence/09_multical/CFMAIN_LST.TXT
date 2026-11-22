@@ -1,0 +1,204 @@
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Page     1-1
+
+
+				;==============================================
+				================
+				; CFMAIN.ASM -- ¶àÎÄ¼þÔ¶µ÷ÓÃ: Ö÷Ä£¿é
+				; CFLIB.ASM  -- ¶àÎÄ¼þÔ¶µ÷ÓÃ: ¿âÄ£¿é (¶ÀÁ¢ FCOD
+				E ¶Î)
+				;
+				; Á½¸öÄ£¿éµÄ´úÂë¶ÎÃû²»Í¬, LINK ²»»áºÏ²¢, ËùÒÔ
+				; call far ptr farlib ÊÇ FAR CALL (9A), Òª»» CS
+				.
+				;==============================================
+				================
+				
+				        .8086
+				        include CALMAC.INC
+			     C	;==============================================
+				================
+			     C	; CALMAC.INC -- ¶àÄ£¿éÈÕÀú×÷ÒµµÄºê¶¨Òå
+			     C	;
+			     C	; MASM 5.10 µÄºêÔÚ»ã±àÊ±Õ¹¿ª£¬²»²úÉú CALL/RET£¬
+				Òò´Ë±È¹ý³Ìµ÷ÓÃ
+			     C	; ¸ü¿ì£¬µ«»áÔö´ó´úÂëÌå»ý¡£±¾ÎÄ¼þ±» CALMAIN/CALD
+				ATE/CALDISP
+			     C	; Èý¸öÄ£¿é¹²Í¬°üº¬¡£
+			     C	;==============================================
+				================
+			     C	
+			     C	;----------------------------------------------
+				----------------
+			     C	; PRINTSTR msg : Êä³ö DS:DX Ö¸ÏòµÄ '$' ½áÎ²×Ö·û
+				´®
+			     C	;   Õ¹¿ªºóÊÇ 3 ÌõÖ¸Áî£¬²»Ñ¹Õ»¡¢²»µ÷ÓÃ¹ý³Ì
+			     C	;----------------------------------------------
+				----------------
+			     C	PRINTSTR macro msg
+			     C	        mov  dx,offset msg
+			     C	        mov  ah,9
+			     C	        int  21h
+			     C	endm
+			     C	
+			     C	;----------------------------------------------
+				----------------
+			     C	; NEWLINE : Êä³ö CR LF
+			     C	;----------------------------------------------
+				----------------
+			     C	NEWLINE macro
+			     C	        push ax
+			     C	        push dx
+			     C	        mov  dl,13
+			     C	        mov  ah,2
+			     C	        int  21h
+			     C	        mov  dl,10
+			     C	        mov  ah,2
+			     C	        int  21h
+			     C	        pop  dx
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Page     1-2
+
+
+			     C	        pop  ax
+			     C	endm
+			     C	
+			     C	;----------------------------------------------
+				----------------
+			     C	; SAVEREGS / RESTOREREGS : ¹ý³ÌÈë¿Ú/³ö¿Ú±£»¤ 6 
+				¸ö³£ÓÃ¼Ä´æÆ÷
+			     C	;----------------------------------------------
+				----------------
+			     C	SAVEREGS macro
+			     C	        push ax
+			     C	        push bx
+			     C	        push cx
+			     C	        push dx
+			     C	        push si
+			     C	        push di
+			     C	endm
+			     C	
+			     C	RESTOREREGS macro
+			     C	        pop  di
+			     C	        pop  si
+			     C	        pop  dx
+			     C	        pop  cx
+			     C	        pop  bx
+			     C	        pop  ax
+			     C	endm
+			     C	
+			     C	;----------------------------------------------
+				----------------
+			     C	; PROLOG / EPILOG : ½ü¹ý³ÌµÄ±ê×¼Õ»Ö¡
+			     C	;   PROLOG Õ¹¿ªÎª push bp / mov bp,sp
+			     C	;   EPILOG Õ¹¿ªÎª pop bp / ret
+			     C	;----------------------------------------------
+				----------------
+			     C	PROLOG macro
+			     C	        push bp
+			     C	        mov  bp,sp
+			     C	endm
+			     C	
+			     C	EPILOG macro
+			     C	        pop  bp
+			     C	        ret
+			     C	endm
+				
+ 0000				STACK   segment stack 'STACK'
+ 0000  0040[			        dw 64 dup(0)
+	   0000			
+			 ]	
+				
+ 0080				STACK   ends
+				
+ 0000				DATA    segment para public 'DATA'
+ 0000  66 61 72 2D 66 69	cf1     db 'far-file: before call',13,10,'$'
+       6C 65 3A 20 62 65	
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Page     1-3
+
+
+       66 6F 72 65 20 63	
+       61 6C 6C 0D 0A 24	
+ 0018  66 61 72 2D 66 69	cf3     db 'far-file: after call',13,10,'$'
+       6C 65 3A 20 61 66	
+       74 65 72 20 63 61	
+       6C 6C 0D 0A 24		
+ 002F				DATA    ends
+				
+				; ÏÈÉùÃ÷ FCODE ¶ÎÃû, ÈÃ MASM ÖªµÀ farlib ÔÚÄÄ¸ö
+				¶Î
+ 0000				FCODE   segment para public 'CODE'
+ 0000				FCODE   ends
+				
+				extrn  farlib:far
+				
+ 0000				CSEG    segment para public 'CODE'
+				        assume cs:CSEG, ds:DATA
+ 0000				start:
+ 0000  B8 ---- R		        mov  ax,DATA
+ 0003  8E D8			        mov  ds,ax
+				        PRINTSTR cf1
+ 0005  BA 0000 R             1	        mov  dx,offset cf1 
+ 0008  B4 09                 1	        mov  ah,9 
+ 000A  CD 21                 1	        int  21h 
+ 000C  9A 0000 ---- E		        call far ptr farlib         ; Íâ²¿Ô¶¹ý³
+				Ì: 9A off seg
+				        PRINTSTR cf3
+ 0011  BA 0018 R             1	        mov  dx,offset cf3 
+ 0014  B4 09                 1	        mov  ah,9 
+ 0016  CD 21                 1	        int  21h 
+ 0018  B8 4C00			        mov  ax,4c00h
+ 001B  CD 21			        int  21h
+ 001D				CSEG    ends
+				
+				        end start
+
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Symbols-1
+
+
+Macros:
+
+		N a m e			Lines
+
+EPILOG . . . . . . . . . . . . .  	   2
+NEWLINE  . . . . . . . . . . . .  	  10
+PRINTSTR . . . . . . . . . . . .  	   3
+PROLOG . . . . . . . . . . . . .  	   2
+RESTOREREGS  . . . . . . . . . .  	   6
+SAVEREGS . . . . . . . . . . . .  	   6
+
+Segments and Groups:
+
+                N a m e         	Length	 Align	Combine Class
+
+CSEG . . . . . . . . . . . . . .  	001D	PARA	PUBLIC	'CODE'
+DATA . . . . . . . . . . . . . .  	002F	PARA	PUBLIC	'DATA'
+FCODE  . . . . . . . . . . . . .  	0000	PARA	PUBLIC	'CODE'
+STACK  . . . . . . . . . . . . .  	0080	PARA	STACK	'STACK'
+
+Symbols:            
+
+                N a m e         	Type	 Value	 Attr
+
+CF1  . . . . . . . . . . . . . .  	L BYTE	0000	DATA
+CF3  . . . . . . . . . . . . . .  	L BYTE	0018	DATA
+
+FARLIB . . . . . . . . . . . . .  	L FAR 	0000		External
+
+START  . . . . . . . . . . . . .  	L NEAR	0000	CSEG
+
+@CPU . . . . . . . . . . . . . .  	TEXT  257		
+@FILENAME  . . . . . . . . . . .  	TEXT  CFMAIN		
+@VERSION . . . . . . . . . . . .  	TEXT  510		
+
+
+    108 Source  Lines
+    114 Total   Lines
+     20 Symbols
+
+  47918 + 455229 Bytes symbol space free
+
+      0 Warning Errors
+      0 Severe  Errors

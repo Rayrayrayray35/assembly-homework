@@ -1,0 +1,6 @@
+OUT_2026_11.TXT vs 08_calendar/OUT_2026_11.TXT: True
+OUT_1900_01.TXT vs 08_calendar/OUT_1900_01.TXT: True
+OUT_2000_02.TXT vs 08_calendar/OUT_2000_02.TXT: True
+OUT_2099_12.TXT vs 08_calendar/OUT_2099_12.TXT: True
+
+4 组多模块输出与作业 8 单文件版逐字节一致 (SHA256)。

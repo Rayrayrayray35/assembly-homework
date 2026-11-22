@@ -1,0 +1,6 @@
+1: before near call (E8)
+2: inside near proc
+3: after near call
+4: before far call (9A)
+5: inside far proc
+6: after far call

@@ -1,0 +1,263 @@
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Page     1-1
+
+
+				;==============================================
+				================
+				; CALLDEMO.ASM -- Í¬Ò»ÎÄ¼þÄÚ: ¶ÎÄÚ½üµ÷ÓÃ + ¶Î¼ä
+				Ô¶µ÷ÓÃ
+				;
+				; ÔËÐÐÊä³ö 6 ÐÐ:
+				;   1. before near call      -> E8 rel16
+				;   2. inside near proc
+				;   3. after near call
+				;   4. before far call       -> 9A off seg
+				;   5. inside far proc
+				;   6. after far call
+				;
+				; »úÆ÷Âë¼û CALLDEMO.LST / MACHINE_CODE.TXT
+				;==============================================
+				================
+				
+				        .8086
+				        include CALMAC.INC
+			     C	;==============================================
+				================
+			     C	; CALMAC.INC -- ¶àÄ£¿éÈÕÀú×÷ÒµµÄºê¶¨Òå
+			     C	;
+			     C	; MASM 5.10 µÄºêÔÚ»ã±àÊ±Õ¹¿ª£¬²»²úÉú CALL/RET£¬
+				Òò´Ë±È¹ý³Ìµ÷ÓÃ
+			     C	; ¸ü¿ì£¬µ«»áÔö´ó´úÂëÌå»ý¡£±¾ÎÄ¼þ±» CALMAIN/CALD
+				ATE/CALDISP
+			     C	; Èý¸öÄ£¿é¹²Í¬°üº¬¡£
+			     C	;==============================================
+				================
+			     C	
+			     C	;----------------------------------------------
+				----------------
+			     C	; PRINTSTR msg : Êä³ö DS:DX Ö¸ÏòµÄ '$' ½áÎ²×Ö·û
+				´®
+			     C	;   Õ¹¿ªºóÊÇ 3 ÌõÖ¸Áî£¬²»Ñ¹Õ»¡¢²»µ÷ÓÃ¹ý³Ì
+			     C	;----------------------------------------------
+				----------------
+			     C	PRINTSTR macro msg
+			     C	        mov  dx,offset msg
+			     C	        mov  ah,9
+			     C	        int  21h
+			     C	endm
+			     C	
+			     C	;----------------------------------------------
+				----------------
+			     C	; NEWLINE : Êä³ö CR LF
+			     C	;----------------------------------------------
+				----------------
+			     C	NEWLINE macro
+			     C	        push ax
+			     C	        push dx
+			     C	        mov  dl,13
+			     C	        mov  ah,2
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Page     1-2
+
+
+			     C	        int  21h
+			     C	        mov  dl,10
+			     C	        mov  ah,2
+			     C	        int  21h
+			     C	        pop  dx
+			     C	        pop  ax
+			     C	endm
+			     C	
+			     C	;----------------------------------------------
+				----------------
+			     C	; SAVEREGS / RESTOREREGS : ¹ý³ÌÈë¿Ú/³ö¿Ú±£»¤ 6 
+				¸ö³£ÓÃ¼Ä´æÆ÷
+			     C	;----------------------------------------------
+				----------------
+			     C	SAVEREGS macro
+			     C	        push ax
+			     C	        push bx
+			     C	        push cx
+			     C	        push dx
+			     C	        push si
+			     C	        push di
+			     C	endm
+			     C	
+			     C	RESTOREREGS macro
+			     C	        pop  di
+			     C	        pop  si
+			     C	        pop  dx
+			     C	        pop  cx
+			     C	        pop  bx
+			     C	        pop  ax
+			     C	endm
+			     C	
+			     C	;----------------------------------------------
+				----------------
+			     C	; PROLOG / EPILOG : ½ü¹ý³ÌµÄ±ê×¼Õ»Ö¡
+			     C	;   PROLOG Õ¹¿ªÎª push bp / mov bp,sp
+			     C	;   EPILOG Õ¹¿ªÎª pop bp / ret
+			     C	;----------------------------------------------
+				----------------
+			     C	PROLOG macro
+			     C	        push bp
+			     C	        mov  bp,sp
+			     C	endm
+			     C	
+			     C	EPILOG macro
+			     C	        pop  bp
+			     C	        ret
+			     C	endm
+				
+ 0000				STACK   segment stack 'STACK'
+ 0000  0040[			        dw 64 dup(0)
+	   0000			
+			 ]	
+				
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Page     1-3
+
+
+ 0080				STACK   ends
+				
+ 0000				DATA    segment para public 'DATA'
+ 0000  31 3A 20 62 65 66	m1      db '1: before near call (E8)',13,10,'$'
+       6F 72 65 20 6E 65	
+       61 72 20 63 61 6C	
+       6C 20 28 45 38 29	
+       0D 0A 24			
+ 001B  32 3A 20 69 6E 73	m2      db '2: inside near proc',13,10,'$'
+       69 64 65 20 6E 65	
+       61 72 20 70 72 6F	
+       63 0D 0A 24		
+ 0031  33 3A 20 61 66 74	m3      db '3: after near call',13,10,'$'
+       65 72 20 6E 65 61	
+       72 20 63 61 6C 6C	
+       0D 0A 24			
+ 0046  34 3A 20 62 65 66	m4      db '4: before far call (9A)',13,10,'$'
+       6F 72 65 20 66 61	
+       72 20 63 61 6C 6C	
+       20 28 39 41 29 0D	
+       0A 24			
+ 0060  35 3A 20 69 6E 73	m5      db '5: inside far proc',13,10,'$'
+       69 64 65 20 66 61	
+       72 20 70 72 6F 63	
+       0D 0A 24			
+ 0075  36 3A 20 61 66 74	m6      db '6: after far call',13,10,'$'
+       65 72 20 66 61 72	
+       20 63 61 6C 6C 0D	
+       0A 24			
+ 0089				DATA    ends
+				
+ 0000				CSEG    segment para public 'CODE'
+				        assume cs:CSEG, ds:DATA
+ 0000				start:
+ 0000  B8 ---- R		        mov  ax,DATA
+ 0003  8E D8			        mov  ds,ax
+				
+				        PRINTSTR m1
+ 0005  BA 0000 R             1	        mov  dx,offset m1 
+ 0008  B4 09                 1	        mov  ah,9 
+ 000A  CD 21                 1	        int  21h 
+ 000C  E8 002E R		        call nearproc               ; ¶ÎÄÚ½üµ÷Ó
+				Ã: E8 rel16
+				        PRINTSTR m3
+ 000F  BA 0031 R             1	        mov  dx,offset m3 
+ 0012  B4 09                 1	        mov  ah,9 
+ 0014  CD 21                 1	        int  21h 
+				
+				        PRINTSTR m4
+ 0016  BA 0046 R             1	        mov  dx,offset m4 
+ 0019  B4 09                 1	        mov  ah,9 
+ 001B  CD 21                 1	        int  21h 
+ 001D  9A 0000 ---- R		        call far ptr farproc        ; ¶Î¼äÔ¶µ÷Ó
+				Ã: 9A off seg
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Page     1-4
+
+
+				        PRINTSTR m6
+ 0022  BA 0075 R             1	        mov  dx,offset m6 
+ 0025  B4 09                 1	        mov  ah,9 
+ 0027  CD 21                 1	        int  21h 
+				
+ 0029  B8 4C00			        mov  ax,4c00h
+ 002C  CD 21			        int  21h
+				
+ 002E				nearproc proc near
+				        PRINTSTR m2
+ 002E  BA 001B R             1	        mov  dx,offset m2 
+ 0031  B4 09                 1	        mov  ah,9 
+ 0033  CD 21                 1	        int  21h 
+ 0035  C3			        ret                         ; C3
+ 0036				nearproc endp
+				
+ 0036				CSEG    ends
+				
+ 0000				FCODE   segment para public 'CODE'
+				        assume cs:FCODE, ds:DATA
+ 0000				farproc proc far
+				        PRINTSTR m5
+ 0000  BA 0060 R             1	        mov  dx,offset m5 
+ 0003  B4 09                 1	        mov  ah,9 
+ 0005  CD 21                 1	        int  21h 
+ 0007  CB			        ret                         ; CB (RETF)
+ 0008				farproc endp
+ 0008				FCODE   ends
+				
+				        end start
+
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Symbols-1
+
+
+Macros:
+
+		N a m e			Lines
+
+EPILOG . . . . . . . . . . . . .  	   2
+NEWLINE  . . . . . . . . . . . .  	  10
+PRINTSTR . . . . . . . . . . . .  	   3
+PROLOG . . . . . . . . . . . . .  	   2
+RESTOREREGS  . . . . . . . . . .  	   6
+SAVEREGS . . . . . . . . . . . .  	   6
+
+Segments and Groups:
+
+                N a m e         	Length	 Align	Combine Class
+
+CSEG . . . . . . . . . . . . . .  	0036	PARA	PUBLIC	'CODE'
+DATA . . . . . . . . . . . . . .  	0089	PARA	PUBLIC	'DATA'
+FCODE  . . . . . . . . . . . . .  	0008	PARA	PUBLIC	'CODE'
+STACK  . . . . . . . . . . . . .  	0080	PARA	STACK	'STACK'
+
+Symbols:            
+
+                N a m e         	Type	 Value	 Attr
+
+FARPROC  . . . . . . . . . . . .  	F PROC	0000	FCODE	Length = 0008
+
+M1 . . . . . . . . . . . . . . .  	L BYTE	0000	DATA
+M2 . . . . . . . . . . . . . . .  	L BYTE	001B	DATA
+M3 . . . . . . . . . . . . . . .  	L BYTE	0031	DATA
+M4 . . . . . . . . . . . . . . .  	L BYTE	0046	DATA
+M5 . . . . . . . . . . . . . . .  	L BYTE	0060	DATA
+M6 . . . . . . . . . . . . . . .  	L BYTE	0075	DATA
+
+NEARPROC . . . . . . . . . . . .  	N PROC	002E	CSEG	Length = 0008
+
+START  . . . . . . . . . . . . .  	L NEAR	0000	CSEG
+
+@CPU . . . . . . . . . . . . . .  	TEXT  257		
+@FILENAME  . . . . . . . . . . .  	TEXT  CALLDEMO		
+@VERSION . . . . . . . . . . . .  	TEXT  510		
+
+
+    132 Source  Lines
+    150 Total   Lines
+     25 Symbols
+
+  47904 + 451148 Bytes symbol space free
+
+      0 Warning Errors
+      0 Severe  Errors

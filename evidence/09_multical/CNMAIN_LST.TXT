@@ -1,0 +1,197 @@
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Page     1-1
+
+
+				;==============================================
+				================
+				; CNMAIN.ASM -- ¶àÎÄ¼þ½üµ÷ÓÃ: Ö÷Ä£¿é
+				; CNLIB.ASM  -- ¶àÎÄ¼þ½üµ÷ÓÃ: ¿âÄ£¿é
+				;
+				; Á½¸öÎÄ¼þ¶¼Ê¹ÓÃÍ¬Ãû CSEG ¶Î, LINK ºÏ²¢³ÉÒ»¸öÎï
+				Àí´úÂë¶Î,
+				; ËùÒÔ call nearlib ÊÇ NEAR CALL (E8), ²»»» CS.
+				;==============================================
+				================
+				
+				        .8086
+				        include CALMAC.INC
+			     C	;==============================================
+				================
+			     C	; CALMAC.INC -- ¶àÄ£¿éÈÕÀú×÷ÒµµÄºê¶¨Òå
+			     C	;
+			     C	; MASM 5.10 µÄºêÔÚ»ã±àÊ±Õ¹¿ª£¬²»²úÉú CALL/RET£¬
+				Òò´Ë±È¹ý³Ìµ÷ÓÃ
+			     C	; ¸ü¿ì£¬µ«»áÔö´ó´úÂëÌå»ý¡£±¾ÎÄ¼þ±» CALMAIN/CALD
+				ATE/CALDISP
+			     C	; Èý¸öÄ£¿é¹²Í¬°üº¬¡£
+			     C	;==============================================
+				================
+			     C	
+			     C	;----------------------------------------------
+				----------------
+			     C	; PRINTSTR msg : Êä³ö DS:DX Ö¸ÏòµÄ '$' ½áÎ²×Ö·û
+				´®
+			     C	;   Õ¹¿ªºóÊÇ 3 ÌõÖ¸Áî£¬²»Ñ¹Õ»¡¢²»µ÷ÓÃ¹ý³Ì
+			     C	;----------------------------------------------
+				----------------
+			     C	PRINTSTR macro msg
+			     C	        mov  dx,offset msg
+			     C	        mov  ah,9
+			     C	        int  21h
+			     C	endm
+			     C	
+			     C	;----------------------------------------------
+				----------------
+			     C	; NEWLINE : Êä³ö CR LF
+			     C	;----------------------------------------------
+				----------------
+			     C	NEWLINE macro
+			     C	        push ax
+			     C	        push dx
+			     C	        mov  dl,13
+			     C	        mov  ah,2
+			     C	        int  21h
+			     C	        mov  dl,10
+			     C	        mov  ah,2
+			     C	        int  21h
+			     C	        pop  dx
+			     C	        pop  ax
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Page     1-2
+
+
+			     C	endm
+			     C	
+			     C	;----------------------------------------------
+				----------------
+			     C	; SAVEREGS / RESTOREREGS : ¹ý³ÌÈë¿Ú/³ö¿Ú±£»¤ 6 
+				¸ö³£ÓÃ¼Ä´æÆ÷
+			     C	;----------------------------------------------
+				----------------
+			     C	SAVEREGS macro
+			     C	        push ax
+			     C	        push bx
+			     C	        push cx
+			     C	        push dx
+			     C	        push si
+			     C	        push di
+			     C	endm
+			     C	
+			     C	RESTOREREGS macro
+			     C	        pop  di
+			     C	        pop  si
+			     C	        pop  dx
+			     C	        pop  cx
+			     C	        pop  bx
+			     C	        pop  ax
+			     C	endm
+			     C	
+			     C	;----------------------------------------------
+				----------------
+			     C	; PROLOG / EPILOG : ½ü¹ý³ÌµÄ±ê×¼Õ»Ö¡
+			     C	;   PROLOG Õ¹¿ªÎª push bp / mov bp,sp
+			     C	;   EPILOG Õ¹¿ªÎª pop bp / ret
+			     C	;----------------------------------------------
+				----------------
+			     C	PROLOG macro
+			     C	        push bp
+			     C	        mov  bp,sp
+			     C	endm
+			     C	
+			     C	EPILOG macro
+			     C	        pop  bp
+			     C	        ret
+			     C	endm
+				
+ 0000				STACK   segment stack 'STACK'
+ 0000  0040[			        dw 64 dup(0)
+	   0000			
+			 ]	
+				
+ 0080				STACK   ends
+				
+ 0000				DATA    segment para public 'DATA'
+ 0000  6E 65 61 72 2D 66	cn1     db 'near-file: before call',13,10,'$'
+       69 6C 65 3A 20 62	
+       65 66 6F 72 65 20	
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Page     1-3
+
+
+       63 61 6C 6C 0D 0A	
+       24			
+ 0019  6E 65 61 72 2D 66	cn3     db 'near-file: after call',13,10,'$'
+       69 6C 65 3A 20 61	
+       66 74 65 72 20 63	
+       61 6C 6C 0D 0A 24	
+ 0031				DATA    ends
+				
+ 0000				CSEG    segment para public 'CODE'
+				        assume cs:CSEG, ds:DATA
+				        extrn  nearlib:near
+ 0000				start:
+ 0000  B8 ---- R		        mov  ax,DATA
+ 0003  8E D8			        mov  ds,ax
+				        PRINTSTR cn1
+ 0005  BA 0000 R             1	        mov  dx,offset cn1 
+ 0008  B4 09                 1	        mov  ah,9 
+ 000A  CD 21                 1	        int  21h 
+ 000C  E8 0000 E		        call nearlib                ; Íâ²¿½ü¹ý³
+				Ì: E8 + Á´½ÓÆÚÖØ¶¨Î»
+				        PRINTSTR cn3
+ 000F  BA 0019 R             1	        mov  dx,offset cn3 
+ 0012  B4 09                 1	        mov  ah,9 
+ 0014  CD 21                 1	        int  21h 
+ 0016  B8 4C00			        mov  ax,4c00h
+ 0019  CD 21			        int  21h
+ 001B				CSEG    ends
+				
+				        end start
+
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Symbols-1
+
+
+Macros:
+
+		N a m e			Lines
+
+EPILOG . . . . . . . . . . . . .  	   2
+NEWLINE  . . . . . . . . . . . .  	  10
+PRINTSTR . . . . . . . . . . . .  	   3
+PROLOG . . . . . . . . . . . . .  	   2
+RESTOREREGS  . . . . . . . . . .  	   6
+SAVEREGS . . . . . . . . . . . .  	   6
+
+Segments and Groups:
+
+                N a m e         	Length	 Align	Combine Class
+
+CSEG . . . . . . . . . . . . . .  	001B	PARA	PUBLIC	'CODE'
+DATA . . . . . . . . . . . . . .  	0031	PARA	PUBLIC	'DATA'
+STACK  . . . . . . . . . . . . .  	0080	PARA	STACK	'STACK'
+
+Symbols:            
+
+                N a m e         	Type	 Value	 Attr
+
+CN1  . . . . . . . . . . . . . .  	L BYTE	0000	DATA
+CN3  . . . . . . . . . . . . . .  	L BYTE	0019	DATA
+
+NEARLIB  . . . . . . . . . . . .  	L NEAR	0000	CSEG	External
+
+START  . . . . . . . . . . . . .  	L NEAR	0000	CSEG
+
+@CPU . . . . . . . . . . . . . .  	TEXT  257		
+@FILENAME  . . . . . . . . . . .  	TEXT  CNMAIN		
+@VERSION . . . . . . . . . . . .  	TEXT  510		
+
+
+    103 Source  Lines
+    109 Total   Lines
+     19 Symbols
+
+  47918 + 455229 Bytes symbol space free
+
+      0 Warning Errors
+      0 Severe  Errors

@@ -1,0 +1,499 @@
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:58:5
+                                                             Page     1-1
+
+
+				;==============================================
+				================
+				; CALDISP.ASM -- ÔÂÀúÏÔÊ¾Ä£¿é
+				;
+				; Ìá¹© PUBLIC ½ü¹ý³Ì show_calendar:
+				;   Èë¿Ú²ÎÊýÔÚÕ»ÉÏ: [bp+4]=Äê, [bp+6]=ÔÂ (½üµ÷Ó
+				Ã)
+				;   ÄÚ²¿ÓÃºê PRINTSTR/NEWLINE/SAVEREGS/RESTORER
+				EGS.
+				;
+				; ±¾Ä£¿éÓë CALMAIN/CALDATE Ê¹ÓÃÍ¬Ãû CSEG ¶Î, LI
+				NK ºÏ²¢ºó
+				; show_calendar Óë main ÔÚÍ¬Ò»¸öÎïÀí´úÂë¶Î, ËùÒ
+				Ô call ÊÇ NEAR.
+				;==============================================
+				================
+				
+				        .8086
+				        include CALMAC.INC
+			     C	;==============================================
+				================
+			     C	; CALMAC.INC -- ¶àÄ£¿éÈÕÀú×÷ÒµµÄºê¶¨Òå
+			     C	;
+			     C	; MASM 5.10 µÄºêÔÚ»ã±àÊ±Õ¹¿ª£¬²»²úÉú CALL/RET£¬
+				Òò´Ë±È¹ý³Ìµ÷ÓÃ
+			     C	; ¸ü¿ì£¬µ«»áÔö´ó´úÂëÌå»ý¡£±¾ÎÄ¼þ±» CALMAIN/CALD
+				ATE/CALDISP
+			     C	; Èý¸öÄ£¿é¹²Í¬°üº¬¡£
+			     C	;==============================================
+				================
+			     C	
+			     C	;----------------------------------------------
+				----------------
+			     C	; PRINTSTR msg : Êä³ö DS:DX Ö¸ÏòµÄ '$' ½áÎ²×Ö·û
+				´®
+			     C	;   Õ¹¿ªºóÊÇ 3 ÌõÖ¸Áî£¬²»Ñ¹Õ»¡¢²»µ÷ÓÃ¹ý³Ì
+			     C	;----------------------------------------------
+				----------------
+			     C	PRINTSTR macro msg
+			     C	        mov  dx,offset msg
+			     C	        mov  ah,9
+			     C	        int  21h
+			     C	endm
+			     C	
+			     C	;----------------------------------------------
+				----------------
+			     C	; NEWLINE : Êä³ö CR LF
+			     C	;----------------------------------------------
+				----------------
+			     C	NEWLINE macro
+			     C	        push ax
+			     C	        push dx
+			     C	        mov  dl,13
+			     C	        mov  ah,2
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:58:5
+                                                             Page     1-2
+
+
+			     C	        int  21h
+			     C	        mov  dl,10
+			     C	        mov  ah,2
+			     C	        int  21h
+			     C	        pop  dx
+			     C	        pop  ax
+			     C	endm
+			     C	
+			     C	;----------------------------------------------
+				----------------
+			     C	; SAVEREGS / RESTOREREGS : ¹ý³ÌÈë¿Ú/³ö¿Ú±£»¤ 6 
+				¸ö³£ÓÃ¼Ä´æÆ÷
+			     C	;----------------------------------------------
+				----------------
+			     C	SAVEREGS macro
+			     C	        push ax
+			     C	        push bx
+			     C	        push cx
+			     C	        push dx
+			     C	        push si
+			     C	        push di
+			     C	endm
+			     C	
+			     C	RESTOREREGS macro
+			     C	        pop  di
+			     C	        pop  si
+			     C	        pop  dx
+			     C	        pop  cx
+			     C	        pop  bx
+			     C	        pop  ax
+			     C	endm
+			     C	
+			     C	;----------------------------------------------
+				----------------
+			     C	; PROLOG / EPILOG : ½ü¹ý³ÌµÄ±ê×¼Õ»Ö¡
+			     C	;   PROLOG Õ¹¿ªÎª push bp / mov bp,sp
+			     C	;   EPILOG Õ¹¿ªÎª pop bp / ret
+			     C	;----------------------------------------------
+				----------------
+			     C	PROLOG macro
+			     C	        push bp
+			     C	        mov  bp,sp
+			     C	endm
+			     C	
+			     C	EPILOG macro
+			     C	        pop  bp
+			     C	        ret
+			     C	endm
+				
+				; Ö»ÉùÃ÷ DATA ¶ÎÃû, ¾ßÌåÊý¾ÝÔÚ CALDATA.ASM ÖÐ¶¨
+				Òå
+				DGROUP  group   DATA
+ 0000				DATA    segment para public 'DATA'
+ 0000				DATA    ends
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:58:5
+                                                             Page     1-3
+
+
+				
+				extrn  cur_year:word, cur_month:word, cur_days:
+				word, cur_wd:word
+				extrn  weekhdr:byte, mnames:word
+				extrn  month_days_reg:near, first_weekday_reg:n
+				ear
+				
+ 0000				CSEG    segment para public 'CODE'
+				        assume cs:CSEG, ds:DGROUP
+				
+				        public show_calendar
+				
+				;----------------------------------------------
+				----------------
+				; show_calendar : ½ü¹ý³Ì, ²ÎÊý [bp+6]=Äê, [bp+4
+				]=ÔÂ
+				;   ½üµ÷ÓÃÕ»Ö¡: [bp+2]=·µ»ØIP, [bp+4]=×îºóÑ¹µÄÔ
+				Â, [bp+6]=ÏÈÑ¹µÄÄê
+				;----------------------------------------------
+				----------------
+ 0000				show_calendar proc near
+				        PROLOG
+ 0000  55                    1	        push bp 
+ 0001  8B EC                 1	        mov  bp,sp 
+				        SAVEREGS
+ 0003  50                    1	        push ax 
+ 0004  53                    1	        push bx 
+ 0005  51                    1	        push cx 
+ 0006  52                    1	        push dx 
+ 0007  56                    1	        push si 
+ 0008  57                    1	        push di 
+				
+ 0009  8B 46 06			        mov  ax,[bp+6]              ; Äê (½üµ÷Ó
+				Ã: [bp+6]=ÏÈÑ¹µÄÄê)
+ 000C  A3 0000 E		        mov  cur_year,ax
+ 000F  8B 46 04			        mov  ax,[bp+4]              ; ÔÂ (×îºóÑ
+				¹µÄÔÚ [bp+4])
+ 0012  A3 0000 E		        mov  cur_month,ax
+				
+ 0015  E8 0029 R		        call print_year
+ 0018  E8 006D R		        call print_month_name
+ 001B  E8 0086 R		        call print_week_header
+ 001E  E8 008E R		        call print_grid
+				
+				        RESTOREREGS
+ 0021  5F                    1	        pop  di 
+ 0022  5E                    1	        pop  si 
+ 0023  5A                    1	        pop  dx 
+ 0024  59                    1	        pop  cx 
+ 0025  5B                    1	        pop  bx 
+ 0026  58                    1	        pop  ax 
+ 0027  5D			        pop  bp
+ 0028  C3			        ret
+ 0029				show_calendar endp
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:58:5
+                                                             Page     1-4
+
+
+				
+				;----------------------------------------------
+				----------------
+				; print_year : Êä³ö 4 Î»Äê·Ý + »»ÐÐ
+				;----------------------------------------------
+				----------------
+ 0029				print_year proc near
+ 0029  50			        push ax
+ 002A  53			        push bx
+ 002B  51			        push cx
+ 002C  52			        push dx
+				
+ 002D  A1 0000 E		        mov  ax,cur_year
+ 0030  B9 03E8			        mov  cx,1000
+ 0033  33 D2			        xor  dx,dx
+ 0035  F7 F1			        div  cx
+ 0037  8B DA			        mov  bx,dx
+ 0039  04 30			        add  al,'0'
+ 003B  E8 011F R		        call putchar
+				
+ 003E  8B C3			        mov  ax,bx
+ 0040  B9 0064			        mov  cx,100
+ 0043  33 D2			        xor  dx,dx
+ 0045  F7 F1			        div  cx
+ 0047  8B DA			        mov  bx,dx
+ 0049  04 30			        add  al,'0'
+ 004B  E8 011F R		        call putchar
+				
+ 004E  8B C3			        mov  ax,bx
+ 0050  B9 000A			        mov  cx,10
+ 0053  33 D2			        xor  dx,dx
+ 0055  F7 F1			        div  cx
+ 0057  8B DA			        mov  bx,dx
+ 0059  04 30			        add  al,'0'
+ 005B  E8 011F R		        call putchar
+				
+ 005E  8B C3			        mov  ax,bx
+ 0060  04 30			        add  al,'0'
+ 0062  E8 011F R		        call putchar
+ 0065  E8 0128 R		        call put_nl
+				
+ 0068  5A			        pop  dx
+ 0069  59			        pop  cx
+ 006A  5B			        pop  bx
+ 006B  58			        pop  ax
+ 006C  C3			        ret
+ 006D				print_year endp
+				
+				;----------------------------------------------
+				----------------
+				; print_month_name : ÓÃ mnames Æ«ÒÆ±íÈ¡Ó¢ÎÄÔÂ·Ý
+				Ãû
+				;----------------------------------------------
+				----------------
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:58:5
+                                                             Page     1-5
+
+
+ 006D				print_month_name proc near
+ 006D  50			        push ax
+ 006E  53			        push bx
+ 006F  52			        push dx
+				
+ 0070  8B 1E 0000 E		        mov  bx,cur_month
+ 0074  4B			        dec  bx
+ 0075  D1 E3			        shl  bx,1
+ 0077  8B 97 0000 E		        mov  dx,[mnames+bx]
+ 007B  B4 09			        mov  ah,9
+ 007D  CD 21			        int  21h
+ 007F  E8 0128 R		        call put_nl
+				
+ 0082  5A			        pop  dx
+ 0083  5B			        pop  bx
+ 0084  58			        pop  ax
+ 0085  C3			        ret
+ 0086				print_month_name endp
+				
+				;----------------------------------------------
+				----------------
+				; print_week_header : ÓÃºêÊä³ö±íÍ·
+				;----------------------------------------------
+				----------------
+ 0086				print_week_header proc near
+				        PRINTSTR weekhdr
+ 0086  BA 0000 E             1	        mov  dx,offset weekhdr 
+ 0089  B4 09                 1	        mov  ah,9 
+ 008B  CD 21                 1	        int  21h 
+ 008D  C3			        ret
+ 008E				print_week_header endp
+				
+				;----------------------------------------------
+				----------------
+				; print_grid : Êä³öÈÕÆÚÍø¸ñ
+				;----------------------------------------------
+				----------------
+ 008E				print_grid proc near
+ 008E  50			        push ax
+ 008F  53			        push bx
+ 0090  51			        push cx
+ 0091  52			        push dx
+ 0092  56			        push si
+ 0093  57			        push di
+				
+ 0094  A1 0000 E		        mov  ax,cur_year
+ 0097  8A 1E 0000 E		        mov  bl,byte ptr cur_month
+ 009B  E8 0000 E		        call month_days_reg         ; AX = ÌìÊý
+ 009E  8B F8			        mov  di,ax
+ 00A0  A3 0000 E		        mov  cur_days,ax
+				
+ 00A3  A1 0000 E		        mov  ax,cur_year
+ 00A6  8B 0E 0000 E		        mov  cx,cur_month
+ 00AA  E8 0000 E		        call first_weekday_reg      ; AL = ÐÇÆÚ
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:58:5
+                                                             Page     1-6
+
+
+ 00AD  32 E4			        xor  ah,ah
+ 00AF  A3 0000 E		        mov  cur_wd,ax
+ 00B2  8B F0			        mov  si,ax                  ; SI = ÁÐ
+				
+ 00B4  8B CE			        mov  cx,si
+ 00B6  E3 11			        jcxz pg_days
+ 00B8				pg_lead:
+ 00B8  B0 20			        mov  al,' '
+ 00BA  E8 011F R		        call putchar
+ 00BD  B0 20			        mov  al,' '
+ 00BF  E8 011F R		        call putchar
+ 00C2  B0 20			        mov  al,' '
+ 00C4  E8 011F R		        call putchar
+ 00C7  E2 EF			        loop pg_lead
+				
+ 00C9				pg_days:
+ 00C9  BB 0001			        mov  bx,1                   ; BX = ÈÕ
+ 00CC				pg_loop:
+ 00CC  8B C3			        mov  ax,bx
+ 00CE  E8 00F5 R		        call putdec2
+				
+ 00D1  3B DF			        cmp  bx,di
+ 00D3  73 16			        jae  pg_last
+				
+ 00D5  83 FE 06			        cmp  si,6
+ 00D8  75 08			        jne  pg_space
+ 00DA  E8 0128 R		        call put_nl
+ 00DD  33 F6			        xor  si,si
+ 00DF  EB 07 90			        jmp  pg_next
+ 00E2				pg_space:
+ 00E2  B0 20			        mov  al,' '
+ 00E4  E8 011F R		        call putchar
+ 00E7  46			        inc  si
+ 00E8				pg_next:
+ 00E8  43			        inc  bx
+ 00E9  EB E1			        jmp  pg_loop
+				
+ 00EB				pg_last:
+ 00EB  E8 0128 R		        call put_nl
+				
+ 00EE  5F			        pop  di
+ 00EF  5E			        pop  si
+ 00F0  5A			        pop  dx
+ 00F1  59			        pop  cx
+ 00F2  5B			        pop  bx
+ 00F3  58			        pop  ax
+ 00F4  C3			        ret
+ 00F5				print_grid endp
+				
+				;----------------------------------------------
+				----------------
+				; putdec2 : AX(0..31) -> 2 Î», ²»×ãÁ½Î»Ç°²¹¿Õ¸ñ
+				;----------------------------------------------
+				----------------
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:58:5
+                                                             Page     1-7
+
+
+ 00F5				putdec2 proc near
+ 00F5  50			        push ax
+ 00F6  53			        push bx
+ 00F7  52			        push dx
+				
+ 00F8  BB 000A			        mov  bx,10
+ 00FB  33 D2			        xor  dx,dx
+ 00FD  F7 F3			        div  bx
+ 00FF  52			        push dx
+ 0100  3D 0000			        cmp  ax,0
+ 0103  75 05			        jne  pd_tens
+ 0105  B2 20			        mov  dl,' '
+ 0107  EB 06 90			        jmp  pd_out1
+ 010A				pd_tens:
+ 010A  8A D0			        mov  dl,al
+ 010C  80 C2 30			        add  dl,'0'
+ 010F				pd_out1:
+ 010F  B4 02			        mov  ah,2
+ 0111  CD 21			        int  21h
+				
+ 0113  5A			        pop  dx
+ 0114  80 C2 30			        add  dl,'0'
+ 0117  B4 02			        mov  ah,2
+ 0119  CD 21			        int  21h
+				
+ 011B  5A			        pop  dx
+ 011C  5B			        pop  bx
+ 011D  58			        pop  ax
+ 011E  C3			        ret
+ 011F				putdec2 endp
+				
+				;----------------------------------------------
+				----------------
+				; putchar : AL ÖÐµÄ×Ö·ûÊä³ö
+				;----------------------------------------------
+				----------------
+ 011F				putchar proc near
+ 011F  50			        push ax
+ 0120  8A D0			        mov  dl,al
+ 0122  B4 02			        mov  ah,2
+ 0124  CD 21			        int  21h
+ 0126  58			        pop  ax
+ 0127  C3			        ret
+ 0128				putchar endp
+				
+				;----------------------------------------------
+				----------------
+				; newline : ÓÃ NEWLINE ºêÕ¹¿ª
+				;----------------------------------------------
+				----------------
+ 0128				put_nl proc near
+				        NEWLINE
+ 0128  50                    1	        push ax 
+ 0129  52                    1	        push dx 
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:58:5
+                                                             Page     1-8
+
+
+ 012A  B2 0D                 1	        mov  dl,13 
+ 012C  B4 02                 1	        mov  ah,2 
+ 012E  CD 21                 1	        int  21h 
+ 0130  B2 0A                 1	        mov  dl,10 
+ 0132  B4 02                 1	        mov  ah,2 
+ 0134  CD 21                 1	        int  21h 
+ 0136  5A                    1	        pop  dx 
+ 0137  58                    1	        pop  ax 
+ 0138  C3			        ret
+ 0139				put_nl endp
+				
+ 0139				CSEG    ends
+				
+				        end
+
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:58:5
+                                                             Symbols-1
+
+
+Macros:
+
+		N a m e			Lines
+
+EPILOG . . . . . . . . . . . . .  	   2
+NEWLINE  . . . . . . . . . . . .  	  10
+PRINTSTR . . . . . . . . . . . .  	   3
+PROLOG . . . . . . . . . . . . .  	   2
+RESTOREREGS  . . . . . . . . . .  	   6
+SAVEREGS . . . . . . . . . . . .  	   6
+
+Segments and Groups:
+
+                N a m e         	Length	 Align	Combine Class
+
+CSEG . . . . . . . . . . . . . .  	0139	PARA	PUBLIC	'CODE'
+DGROUP . . . . . . . . . . . . .  	GROUP
+  DATA . . . . . . . . . . . . .  	0000	PARA	PUBLIC	'DATA'
+
+Symbols:            
+
+                N a m e         	Type	 Value	 Attr
+
+CUR_DAYS . . . . . . . . . . . .  	V WORD	0000		External
+CUR_MONTH  . . . . . . . . . . .  	V WORD	0000		External
+CUR_WD . . . . . . . . . . . . .  	V WORD	0000		External
+CUR_YEAR . . . . . . . . . . . .  	V WORD	0000		External
+
+FIRST_WEEKDAY_REG  . . . . . . .  	L NEAR	0000		External
+
+MNAMES . . . . . . . . . . . . .  	V WORD	0000		External
+MONTH_DAYS_REG . . . . . . . . .  	L NEAR	0000		External
+
+PD_OUT1  . . . . . . . . . . . .  	L NEAR	010F	CSEG
+PD_TENS  . . . . . . . . . . . .  	L NEAR	010A	CSEG
+PG_DAYS  . . . . . . . . . . . .  	L NEAR	00C9	CSEG
+PG_LAST  . . . . . . . . . . . .  	L NEAR	00EB	CSEG
+PG_LEAD  . . . . . . . . . . . .  	L NEAR	00B8	CSEG
+PG_LOOP  . . . . . . . . . . . .  	L NEAR	00CC	CSEG
+PG_NEXT  . . . . . . . . . . . .  	L NEAR	00E8	CSEG
+PG_SPACE . . . . . . . . . . . .  	L NEAR	00E2	CSEG
+PRINT_GRID . . . . . . . . . . .  	N PROC	008E	CSEG	Length = 0067
+PRINT_MONTH_NAME . . . . . . . .  	N PROC	006D	CSEG	Length = 0019
+PRINT_WEEK_HEADER  . . . . . . .  	N PROC	0086	CSEG	Length = 0008
+PRINT_YEAR . . . . . . . . . . .  	N PROC	0029	CSEG	Length = 0044
+PUTCHAR  . . . . . . . . . . . .  	N PROC	011F	CSEG	Length = 0009
+PUTDEC2  . . . . . . . . . . . .  	N PROC	00F5	CSEG	Length = 002A
+PUT_NL . . . . . . . . . . . . .  	N PROC	0128	CSEG	Length = 0011
+
+SHOW_CALENDAR  . . . . . . . . .  	N PROC	0000	CSEG	Global	Length = 0029
+
+WEEKHDR  . . . . . . . . . . . .  	V BYTE	0000		External
+
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:58:5
+                                                             Symbols-2
+
+
+@CPU . . . . . . . . . . . . . .  	TEXT  257		
+@FILENAME  . . . . . . . . . . .  	TEXT  CALDISP		
+@VERSION . . . . . . . . . . . .  	TEXT  510		
+
+
+    321 Source  Lines
+    348 Total   Lines
+     39 Symbols
+
+  47844 + 447110 Bytes symbol space free
+
+      0 Warning Errors
+      0 Severe  Errors

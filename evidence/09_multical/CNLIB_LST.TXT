@@ -1,0 +1,171 @@
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Page     1-1
+
+
+				;==============================================
+				================
+				; CNLIB.ASM -- 多文件近调用: 库模块
+				; 与 CNMAIN.ASM 使用同名 CSEG 段, 被 LINK 合并.
+				;==============================================
+				================
+				
+				        .8086
+				        include CALMAC.INC
+			     C	;==============================================
+				================
+			     C	; CALMAC.INC -- 多模块日历作业的宏定义
+			     C	;
+			     C	; MASM 5.10 的宏在汇编时展开，不产生 CALL/RET，
+				因此比过程调用
+			     C	; 更快，但会增大代码体积。本文件被 CALMAIN/CALD
+				ATE/CALDISP
+			     C	; 三个模块共同包含。
+			     C	;==============================================
+				================
+			     C	
+			     C	;----------------------------------------------
+				----------------
+			     C	; PRINTSTR msg : 输出 DS:DX 指向的 '$' 结尾字符
+				串
+			     C	;   展开后是 3 条指令，不压栈、不调用过程
+			     C	;----------------------------------------------
+				----------------
+			     C	PRINTSTR macro msg
+			     C	        mov  dx,offset msg
+			     C	        mov  ah,9
+			     C	        int  21h
+			     C	endm
+			     C	
+			     C	;----------------------------------------------
+				----------------
+			     C	; NEWLINE : 输出 CR LF
+			     C	;----------------------------------------------
+				----------------
+			     C	NEWLINE macro
+			     C	        push ax
+			     C	        push dx
+			     C	        mov  dl,13
+			     C	        mov  ah,2
+			     C	        int  21h
+			     C	        mov  dl,10
+			     C	        mov  ah,2
+			     C	        int  21h
+			     C	        pop  dx
+			     C	        pop  ax
+			     C	endm
+			     C	
+			     C	;----------------------------------------------
+				----------------
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Page     1-2
+
+
+			     C	; SAVEREGS / RESTOREREGS : 过程入口/出口保护 6 
+				个常用寄存器
+			     C	;----------------------------------------------
+				----------------
+			     C	SAVEREGS macro
+			     C	        push ax
+			     C	        push bx
+			     C	        push cx
+			     C	        push dx
+			     C	        push si
+			     C	        push di
+			     C	endm
+			     C	
+			     C	RESTOREREGS macro
+			     C	        pop  di
+			     C	        pop  si
+			     C	        pop  dx
+			     C	        pop  cx
+			     C	        pop  bx
+			     C	        pop  ax
+			     C	endm
+			     C	
+			     C	;----------------------------------------------
+				----------------
+			     C	; PROLOG / EPILOG : 近过程的标准栈帧
+			     C	;   PROLOG 展开为 push bp / mov bp,sp
+			     C	;   EPILOG 展开为 pop bp / ret
+			     C	;----------------------------------------------
+				----------------
+			     C	PROLOG macro
+			     C	        push bp
+			     C	        mov  bp,sp
+			     C	endm
+			     C	
+			     C	EPILOG macro
+			     C	        pop  bp
+			     C	        ret
+			     C	endm
+				
+ 0000				DATA    segment para public 'DATA'
+ 0000  6E 65 61 72 2D 66	cn2     db 'near-file: inside library',13,10,'$
+				'
+       69 6C 65 3A 20 69	
+       6E 73 69 64 65 20	
+       6C 69 62 72 61 72	
+       79 0D 0A 24		
+ 001C				DATA    ends
+				
+ 0000				CSEG    segment para public 'CODE'
+				        assume cs:CSEG, ds:DATA
+				        public nearlib
+ 0000				nearlib proc near
+				        PRINTSTR cn2
+ 0000  BA 0000 R             1	        mov  dx,offset cn2 
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Page     1-3
+
+
+ 0003  B4 09                 1	        mov  ah,9 
+ 0005  CD 21                 1	        int  21h 
+ 0007  C3			        ret                         ; C3
+ 0008				nearlib endp
+ 0008				CSEG    ends
+				
+				        end
+
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:59:0
+                                                             Symbols-1
+
+
+Macros:
+
+		N a m e			Lines
+
+EPILOG . . . . . . . . . . . . .  	   2
+NEWLINE  . . . . . . . . . . . .  	  10
+PRINTSTR . . . . . . . . . . . .  	   3
+PROLOG . . . . . . . . . . . . .  	   2
+RESTOREREGS  . . . . . . . . . .  	   6
+SAVEREGS . . . . . . . . . . . .  	   6
+
+Segments and Groups:
+
+                N a m e         	Length	 Align	Combine Class
+
+CSEG . . . . . . . . . . . . . .  	0008	PARA	PUBLIC	'CODE'
+DATA . . . . . . . . . . . . . .  	001C	PARA	PUBLIC	'DATA'
+
+Symbols:            
+
+                N a m e         	Type	 Value	 Attr
+
+CN2  . . . . . . . . . . . . . .  	L BYTE	0000	DATA
+
+NEARLIB  . . . . . . . . . . . .  	N PROC	0000	CSEG	Global	Length = 0008
+
+@CPU . . . . . . . . . . . . . .  	TEXT  257		
+@FILENAME  . . . . . . . . . . .  	TEXT  CNLIB		
+@VERSION . . . . . . . . . . . .  	TEXT  510		
+
+
+     91 Source  Lines
+     94 Total   Lines
+     16 Symbols
+
+  47972 + 461319 Bytes symbol space free
+
+      0 Warning Errors
+      0 Severe  Errors

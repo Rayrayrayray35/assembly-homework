@@ -1,0 +1,117 @@
+;==============================================================
+; CALL_COMPARE.TXT -- 三种 CALL 场景的机器码与执行差异
+;
+; 所有字节来自 MASM 5.10 / LINK 3.64 生成的 .LST 和最终 .EXE.
+; 段值是"相对装入段的段地址", DOS 装入时再加装入段基址.
+;==============================================================
+
+一、同一代码段内: 近调用 E8 rel16
+--------------------------------------------------------------
+CALMAIN.ASM:
+  000C  E8 0062 R        call read_dec
+  read_dec 在 CSEG:0062, 下一条指令 IP=000F
+  位移 = 0062H - 000FH = 0053H
+
+CAL.EXE 实际字节 (CSEG:000C, 文件偏移 051CH):
+  E8 53 00
+
+执行:
+  SP = SP - 2
+  [SP] = 返回 IP (000F)
+  CS 不变
+返回:
+  RET (C3) 弹出 IP
+
+二、同一文件、不同代码段: 远调用 9A off seg
+--------------------------------------------------------------
+CALLDEMO.ASM:
+  000C  E8 002E R        call nearproc      ; 同一 CSEG, 近调用
+  001D  9A 0000 ---- R   call far ptr farproc ; CSEG -> FCODE, 远调用
+  0007  CB              ret                ; farproc 的 RETF
+
+CALLDEMO.EXE 实际字节:
+  文件偏移 031CH: E8 1F 00       ; nearproc 在 CSEG:002E
+  文件偏移 032DH: 9A 00 00 15 00 ; farproc 在 FCODE:0000, 段值 0015H
+
+执行:
+  近调用: SP-2, [SP]=IP, CS 不变
+  远调用: SP-4, [SP]=返回 IP, [SP+2]=返回 CS, CS 换成 FCODE
+返回:
+  nearproc 用 C3, 只弹 IP
+  farproc  用 CB, 弹 IP 和 CS
+
+三、多文件、同段合并: 近调用 E8 + 链接期重定位
+--------------------------------------------------------------
+CALMAIN + CALDATE + CALDISP + CALDATA 都使用同名 CSEG 段,
+LINK 把它们合并成一个物理代码段 (CAL.MAP 中 CSEG 长 02D9H).
+
+CALMAIN.LST:
+  0057  E8 0000 E        call show_calendar
+
+CAL.EXE 实际字节 (CSEG:0057, 文件偏移 0567H):
+  E8 46 01
+
+  show_calendar 在合并后的 CSEG:01A0H
+  下一条 IP = 005AH, 位移 = 01A0H - 005AH = 0146H
+
+CNMAIN + CNLIB (两个文件, 同名 CSEG):
+  CNMAIN.LST: 000C  E8 0000 E  call nearlib
+  CN.EXE:     E8 11 00       ; nearlib 在 CSEG:0020H
+
+特点:
+  - 源文件里位移是 0000 + 外部重定位 (E)
+  - 链接时才填入真正的 16 位位移
+  - CS 不变, 仍是同一个物理代码段
+
+四、多文件、不同段: 远调用 9A + 两个重定位
+--------------------------------------------------------------
+CFMAIN + CFLIB:
+  CFLIB 的 farlib 放在独立的 FCODE 段, 与 CFMAIN 的 CSEG 不同.
+
+CFMAIN.ASM:
+  000C  9A 0000 ---- E   call far ptr farlib
+
+CF.EXE 实际字节 (CSEG:000C, 文件偏移 02ECH):
+  9A 00 00 0D 00
+
+  farlib 在 FCODE:0000H
+  FCODE 在 MAP 中从 00D0H 字节开始 = 000DH 段
+
+  CFLIB 的 farlib 用 CB (RETF) 返回.
+
+注意 (实际踩过的坑):
+  如果 CFMAIN 不声明 FCODE 段名, MASM/LINK 3.64 会把 farlib 的
+  远指针解析成 "CSEG 段 + 连续偏移", 即 9A 20 00 05 00 这种
+  "CS 仍是 CSEG, 但 IP 恰好指到 FCODE 的物理地址" 的形式.
+  程序可能碰巧能跑 (段连续), 但不是真正的段间切换.
+  在 CFMAIN 里加一个空的 FCODE segment 声明后, 才得到正确的
+  9A 00 00 0D 00.
+
+五、CALLTRACE 单步观察数据 (OUT_CALLTRACE.TXT)
+--------------------------------------------------------------
+near before:  CS=01CC IP=0005 SP=0200
+near entry :  CS=01CC IP=003E SP=01FE
+ [SP]=0013 [SP+2]=A3B8
+near after :  CS=01CC IP=0013 SP=0200
+
+far  before:  CS=01CC IP=001E SP=0200
+far  entry :  CS=01DC IP=0000 SP=01FC
+ [SP]=002E [SP+2]=01CC
+far  after :  CS=01CC IP=002E SP=0200
+
+读法:
+1. 近调用 call nearproc:
+   - 调用前 SP=0200, 调用后入口 SP=01FE, 正好减 2
+   - 入口 [SP]=0013, 就是 call 的下一条指令 IP
+   - CS 前后都是 01CC, 没有变化
+   - 返回后 SP 恢复 0200
+
+2. 远调用 call far ptr farproc:
+   - 调用前 SP=0200, 入口 SP=01FC, 正好减 4
+   - 入口 [SP]=002E, 是返回 IP
+   - 入口 [SP+2]=01CC, 是返回 CS
+   - CS 从 01CC 变成 01DC (FCODE 段)
+   - 返回后 SP 恢复 0200, CS 回到 01CC
+
+3. 近过程的 RET (C3) 只弹 2 字节 IP; 远过程的 RETF (CB)
+   弹 4 字节 IP+CS, 所以 SP 的恢复量分别是 +2 和 +4.

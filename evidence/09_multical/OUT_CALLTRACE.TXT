@@ -1,0 +1,8 @@
+near before:  CS=01CC IP=0005 SP=0200
+near entry :  CS=01CC IP=003E SP=01FE
+ [SP]=0013 [SP+2]=A3B8
+near after :  CS=01CC IP=0013 SP=0200
+far  before:  CS=01CC IP=001E SP=0200
+far  entry :  CS=01DC IP=0000 SP=01FC
+ [SP]=002E [SP+2]=01CC
+far  after :  CS=01CC IP=002E SP=0200

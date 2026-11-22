@@ -1,0 +1,160 @@
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:58:5
+                                                             Page     1-1
+
+
+				;==============================================
+				================
+				; CALDATA.ASM -- 多模块日历的公共数据段
+				;
+				; 本模块只定义数据和 PUBLIC 符号, 不产生代码.
+				; 其他模块用 EXTRN 引用这里的变量/字符串.
+				;==============================================
+				================
+				
+				        .8086
+				
+				DGROUP  group   DATA
+ 0000				DATA    segment para public 'DATA'
+				
+				        public cur_year, cur_month, cur_days, c
+				ur_wd
+				        public inbuf
+				        public p_year, p_month, e_year, e_month
+				        public weekhdr
+				        public mdays, mnames
+				
+ 0000  0000			cur_year  dw 0
+ 0002  0000			cur_month dw 0
+ 0004  0000			cur_days  dw 0
+ 0006  0000			cur_wd    dw 0
+				
+ 0008  06 00			inbuf     db 6,0,6 dup(0)
+       0006[			
+	   00			
+			 ]	
+				
+				
+ 0010  69 6E 70 75 74 20	p_year    db 'input year (1900-2099): $'
+       79 65 61 72 20 28	
+       31 39 30 30 2D 32	
+       30 39 39 29 3A 20	
+       24			
+ 0029  69 6E 70 75 74 20	p_month   db 'input month (1-12): $'
+       6D 6F 6E 74 68 20	
+       28 31 2D 31 32 29	
+       3A 20 24			
+ 003E  0D 0A 79 65 61 72	e_year    db 13,10,'year must be 1900-2099',13,
+				10,'$'
+       20 6D 75 73 74 20	
+       62 65 20 31 39 30	
+       30 2D 32 30 39 39	
+       0D 0A 24			
+ 0059  0D 0A 6D 6F 6E 74	e_month   db 13,10,'month must be 1-12',13,10,'
+				$'
+       68 20 6D 75 73 74	
+       20 62 65 20 31 2D	
+       31 32 0D 0A 24		
+				
+ 0070  53 75 20 4D 6F 20	weekhdr   db 'Su Mo Tu We Th Fr Sa',13,10,'$'
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:58:5
+                                                             Page     1-2
+
+
+       54 75 20 57 65 20	
+       54 68 20 46 72 20	
+       53 61 0D 0A 24		
+				
+ 0087  001F 001C 001F 001E	mdays     dw 31,28,31,30,31,30,31,31,30,31,30,3
+				1
+       001F 001E 001F 001F	
+       001E 001F 001E 001F	
+ 009F  00B7 R 00BF R 00C8 R	mnames    dw m1,m2,m3,m4,m5,m6,m7,m8,m9,m10,m11
+				,m12
+       00CE R 00D4 R 00D8 R	
+       00DD R 00E2 R 00E9 R	
+       00F3 R 00FB R 0104 R	
+ 00B7  4A 61 6E 75 61 72	m1        db 'January$'
+       79 24			
+ 00BF  46 65 62 72 75 61	m2        db 'February$'
+       72 79 24			
+ 00C8  4D 61 72 63 68 24	m3        db 'March$'
+ 00CE  41 70 72 69 6C 24	m4        db 'April$'
+ 00D4  4D 61 79 24		m5        db 'May$'
+ 00D8  4A 75 6E 65 24		m6        db 'June$'
+ 00DD  4A 75 6C 79 24		m7        db 'July$'
+ 00E2  41 75 67 75 73 74	m8        db 'August$'
+       24			
+ 00E9  53 65 70 74 65 6D	m9        db 'September$'
+       62 65 72 24		
+ 00F3  4F 63 74 6F 62 65	m10       db 'October$'
+       72 24			
+ 00FB  4E 6F 76 65 6D 62	m11       db 'November$'
+       65 72 24			
+ 0104  44 65 63 65 6D 62	m12       db 'December$'
+       65 72 24			
+				
+ 010D				DATA    ends
+				
+				        end
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:58:5
+                                                             Symbols-1
+
+
+Segments and Groups:
+
+                N a m e         	Length	 Align	Combine Class
+
+DGROUP . . . . . . . . . . . . .  	GROUP
+  DATA . . . . . . . . . . . . .  	010D	PARA	PUBLIC	'DATA'
+
+Symbols:            
+
+                N a m e         	Type	 Value	 Attr
+
+CUR_DAYS . . . . . . . . . . . .  	L WORD	0004	DATA	Global
+CUR_MONTH  . . . . . . . . . . .  	L WORD	0002	DATA	Global
+CUR_WD . . . . . . . . . . . . .  	L WORD	0006	DATA	Global
+CUR_YEAR . . . . . . . . . . . .  	L WORD	0000	DATA	Global
+
+E_MONTH  . . . . . . . . . . . .  	L BYTE	0059	DATA	Global
+E_YEAR . . . . . . . . . . . . .  	L BYTE	003E	DATA	Global
+
+INBUF  . . . . . . . . . . . . .  	L BYTE	0008	DATA	Global
+
+M1 . . . . . . . . . . . . . . .  	L BYTE	00B7	DATA
+M10  . . . . . . . . . . . . . .  	L BYTE	00F3	DATA
+M11  . . . . . . . . . . . . . .  	L BYTE	00FB	DATA
+M12  . . . . . . . . . . . . . .  	L BYTE	0104	DATA
+M2 . . . . . . . . . . . . . . .  	L BYTE	00BF	DATA
+M3 . . . . . . . . . . . . . . .  	L BYTE	00C8	DATA
+M4 . . . . . . . . . . . . . . .  	L BYTE	00CE	DATA
+M5 . . . . . . . . . . . . . . .  	L BYTE	00D4	DATA
+M6 . . . . . . . . . . . . . . .  	L BYTE	00D8	DATA
+M7 . . . . . . . . . . . . . . .  	L BYTE	00DD	DATA
+M8 . . . . . . . . . . . . . . .  	L BYTE	00E2	DATA
+M9 . . . . . . . . . . . . . . .  	L BYTE	00E9	DATA
+MDAYS  . . . . . . . . . . . . .  	L WORD	0087	DATA	Global
+MNAMES . . . . . . . . . . . . .  	L WORD	009F	DATA	Global
+
+P_MONTH  . . . . . . . . . . . .  	L BYTE	0029	DATA	Global
+P_YEAR . . . . . . . . . . . . .  	L BYTE	0010	DATA	Global
+
+WEEKHDR  . . . . . . . . . . . .  	L BYTE	0070	DATA	Global
+
+@CPU . . . . . . . . . . . . . .  	TEXT  257		
+@FILENAME  . . . . . . . . . . .  	TEXT  CALDATA		
+@VERSION . . . . . . . . . . . .  	TEXT  510		
+
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:58:5
+                                                             Symbols-2
+
+
+
+     50 Source  Lines
+     50 Total   Lines
+     31 Symbols
+
+  48060 + 459184 Bytes symbol space free
+
+      0 Warning Errors
+      0 Severe  Errors
