@@ -1,0 +1,146 @@
+;==============================================================
+; CAL_LST_EXCERPT.TXT -- CAL.LST 关键行摘录
+; 说明: 原始 CAL.LST 由 MASM 5.10 生成, 中文注释在 CP936 下
+;       可能显示为 ?, 这里只保留机器码和指令部分.
+;==============================================================
+
+; ---- 主程序: 输入年份、校验、跳到月份 ----
+ 0005  BA 0010 R          mov dx,offset p_year
+ 000A  CD 21              int 21h
+ 000C  E8 0064 R          call read_dec
+ 000F  72 10              jc  year_bad
+ 0011  3D 076C            cmp ax,1900
+ 0014  72 0B              jb  year_bad
+ 0016  3D 0833            cmp ax,2099
+ 0019  77 06              ja  year_bad
+ 001B  A3 0000 R          mov cur_year,ax
+ 001E  EB 0A 90           jmp month_again
+
+; ---- 栈传参 + 段间远调用 ----
+ 004F  A1 0000 R          mov ax,cur_year
+ 0052  50                 push ax
+ 0053  A1 0002 R          mov ax,cur_month
+ 0056  50                 push ax
+ 0057  9A 0000 ---- R     call far ptr show_calendar
+ 005C  83 C4 04           add sp,4
+ 005F  B8 4C00            mov ax,4c00h
+ 0062  CD 21              int 21h
+
+; ---- read_dec: 0AH 缓冲输入 + 十进制解析 ----
+ 0064                     read_dec proc
+ 0064  53                 push bx
+ 0065  51                 push cx
+ 0066  52                 push dx
+ 0067  56                 push si
+ 0068  BA 0008 R          mov dx,offset inbuf
+ 006B  B4 0A              mov ah,0ah
+ 006D  CD 21              int 21h
+ ...
+ 007B  8A 0E 0009 R       mov cl,[inbuf+1]
+ 007F  32 ED              xor ch,ch
+ 0081  BE 0008 R          mov si,offset inbuf
+ 0084  83 C6 02           add si,2
+ 0087  33 C0              xor ax,ax
+ 0089  33 DB              xor bx,bx
+ 008B  E3 1A              jcxz rd_ok
+ 008D  8A 1C              mov bl,[si]
+ 008F  80 FB 0D           cmp bl,13
+ 0092  74 13              je rd_ok
+ 0094  80 EB 30           sub bl,'0'
+ 0097  80 FB 09           cmp bl,9
+ 009A  77 0F              ja rd_bad
+ 009C  BA 000A           mov dx,10
+ 009F  F7 E2              mul dx
+ 00A1  03 C3              add ax,bx
+ 00A3  46                 inc si
+ 00A4  49                 dec cx
+ 00A5  EB E4              jmp rd_loop
+
+; ---- 远过程 show_calendar: 取栈参数、调显示 ----
+ 0000                     show_calendar proc far
+ 0000  55                 push bp
+ 0001  8B EC              mov bp,sp
+ 0003  50                 push ax
+ 0004  53                 push bx
+ 0005  51                 push cx
+ 0006  52                 push dx
+ 0007  56                 push si
+ 0008  57                 push di
+ 0009  8B 46 08           mov ax,[bp+8]       ; 年
+ 000C  A3 0000 R          mov cur_year,ax
+ 000F  8B 46 06           mov ax,[bp+6]       ; 月
+ 0012  A3 0002 R          mov cur_month,ax
+ 0015  E8 00F0 R          call print_year
+ ...
+ 0018  E8 0134 R          call print_month_name
+ 001B  E8 014D R          call print_week_header
+ 001E  E8 0159 R          call print_grid
+ ...
+ 0026  58                 pop ax
+ 0027  5D                 pop bp
+ 0028  CB                 ret                 ; FAR -> RETF
+ 0029                     show_calendar endp
+
+; ---- 日期计算: 寄存器传参 ----
+ 002A                     is_leap_reg proc
+ 002A  53                 push bx
+ 002B  51                 push cx
+ 002C  52                 push dx
+ 002D  8B D8              mov bx,ax
+ 002F  8B C3              mov ax,bx
+ 0031  31 D2              xor dx,dx
+ 0033  B9 0004           mov cx,4
+ 0036  F7 F1              div cx
+ 0038  85 D2              test dx,dx
+ 003A  75 14              jnz il_no
+ ...
+ 003C                     month_days_reg proc
+ 003C  56                 push si
+ 003D  8B F0              mov si,ax
+ 003F  88 D9              mov cl,bl
+ ...
+ 0060                     first_weekday_reg proc
+ 0060  56                 push si
+ 0061  57                 push di
+ 0062  8B F0              mov si,ax
+ 0064  8B F9              mov di,cx
+ 0066  83 FF 03           cmp di,3
+ 0069  7D 04              jge fw_m_ok
+ 006B  83 C7 0C           add di,12
+ 006E  4E                 dec si
+ 006F                     fw_m_ok:
+ 006F  8B C7              mov ax,di
+ 0071  40                 inc ax
+ 0073  BB 000D           mov bx,13
+ 0076  F7 E3              mul bx
+ 0078  BB 0005           mov bx,5
+ 007B  F7 F3              div bx
+ ...
+ 00E7  F7 F1              div cx
+ 00E9  8B C2              mov ax,dx
+ 00EB  05 0006           add ax,6
+ 00EE  31 D2              xor dx,dx
+ 00F0  B9 0007           mov cx,7
+ 00F3  F7 F1              div cx
+ 00F5  8B C2              mov ax,dx
+ 00F7  5F                 pop di
+ 00F8  5E                 pop si
+ 00F9  5A                 pop dx
+ 00FA  5B                 pop bx
+ 00FB  C3                 ret
+
+; ---- 输出: 2 位右对齐 ----
+ 01C0                     putdec2 proc
+ 01C0  50                 push ax
+ 01C1  53                 push bx
+ 01C2  52                 push dx
+ 01C3  BB 000A           mov bx,10
+ 01C6  31 D2              xor dx,dx
+ 01C8  F7 F3              div bx
+ 01CA  52                 push dx
+ 01CB  3D 0000           cmp ax,0
+ 01CE  75 04              jne pd_tens
+ 01D0  B2 20              mov dl,' '
+ ...
+ 01E9  C3                 ret
+ 01EA                     putdec2 endp

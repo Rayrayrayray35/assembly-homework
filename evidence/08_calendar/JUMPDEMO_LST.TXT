@@ -1,0 +1,173 @@
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:30:2
+                                                             Page     1-1
+
+
+				;==============================================
+				================
+				; JUMPDEMO.ASM -- ¶ÌÌø×ª / ½üÌø×ª / Ô¶µ÷ÓÃ / Ô¶
+				Ìø×ª µÄ»úÆ÷ÂëÑÝÊ¾
+				;
+				; ÔËÐÐºóÒÀ´ÎÊä³ö 5 ÐÐ, ¶ÔÓ¦:
+				;   1. JMP SHORT   -> EB rel8        (¶ÎÄÚ, 1 ×
+				Ö½ÚÎ»ÒÆ)
+				;   2. JMP NEAR    -> E9 rel16       (¶ÎÄÚ, 2 ×
+				Ö½ÚÎ»ÒÆ)
+				;   3. CALL FAR    -> 9A off seg     (¶Î¼ä, Ñ¹ 
+				CS:IP)
+				;   4. JMP FAR     -> EA off seg     (¶Î¼ä, Ö±½
+				Ó»» CS:IP)
+				;   5. ÒÑ½øÈë CODE2, ÍË³ö
+				;
+				; »úÆ÷Âë¿ÉÓÃ MASM Éú³ÉµÄ .LST ÎÄ¼þÖðÌõºË¶Ô.
+				;==============================================
+				================
+				
+				        .8086
+				
+ 0000				stackseg segment stack 'STACK'
+ 0000  0040[			        dw 64 dup(0)
+	   0000			
+			 ]	
+				
+ 0080				stackseg ends
+				
+ 0000				dataseg segment para public 'DATA'
+ 0000  31 3A 20 73 68 6F	m1      db '1: short jump (EB rel8)',13,10,'$'
+       72 74 20 6A 75 6D	
+       70 20 28 45 42 20	
+       72 65 6C 38 29 0D	
+       0A 24			
+ 001A  32 3A 20 6E 65 61	m2      db '2: near jump  (E9 rel16)',13,10,'$'
+       72 20 6A 75 6D 70	
+       20 20 28 45 39 20	
+       72 65 6C 31 36 29	
+       0D 0A 24			
+ 0035  33 3A 20 66 61 72	m3      db '3: far call   (9A off seg)',13,10,'
+				$'
+       20 63 61 6C 6C 20	
+       20 20 28 39 41 20	
+       6F 66 66 20 73 65	
+       67 29 0D 0A 24		
+ 0052  34 3A 20 66 61 72	m4      db '4: far jump   (EA off seg)',13,10,'
+				$'
+       20 6A 75 6D 70 20	
+       20 20 28 45 41 20	
+       6F 66 66 20 73 65	
+       67 29 0D 0A 24		
+ 006F  35 3A 20 6E 6F 77	m5      db '5: now in CODE2, exit',13,10,'$'
+       20 69 6E 20 43 4F	
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:30:2
+                                                             Page     1-2
+
+
+       44 45 32 2C 20 65	
+       78 69 74 0D 0A 24	
+ 0087				dataseg ends
+				
+ 0000				code1 segment para public 'CODE'
+				        assume cs:code1, ds:dataseg, ss:stackse
+				g
+ 0000				start:
+ 0000  B8 ---- R		        mov  ax,dataseg
+ 0003  8E D8			        mov  ds,ax
+				
+ 0005  BA 0000 R		        mov  dx,offset m1
+ 0008  B4 09			        mov  ah,9
+ 000A  CD 21			        int  21h
+				
+ 000C  EB 14			        jmp  short sh1              ; EB xx
+ 000E  0014[			        db   20 dup(90h)            ; Ìî³ä, ÈÃ¶
+				ÌÌø×ªÎ»ÒÆ¿´µÃ¼û
+	   90			
+			 ]	
+				
+ 0022				sh1:
+ 0022  BA 001A R		        mov  dx,offset m2
+ 0025  B4 09			        mov  ah,9
+ 0027  CD 21			        int  21h
+				
+ 0029  E9 00F4 R		        jmp  near ptr nr1           ; E9 xx xx 
+				(¿ç¹ý 200 ×Ö½Ú)
+ 002C  00C8[			        db   200 dup(90h)
+	   90			
+			 ]	
+				
+ 00F4				nr1:
+ 00F4  9A 0000 ---- R		        call far ptr proc2          ; 9A off se
+				g
+ 00F9  BA 0052 R		        mov  dx,offset m4
+ 00FC  B4 09			        mov  ah,9
+ 00FE  CD 21			        int  21h
+				
+ 0100  EA 0008 ---- R		        jmp  far ptr far_entry      ; EA off se
+				g (²»·µ»Ø)
+ 0105				code1 ends
+				
+ 0000				code2 segment para public 'CODE'
+				        assume cs:code2, ds:dataseg, ss:stackse
+				g
+ 0000				proc2   proc far
+ 0000  BA 0035 R		        mov  dx,offset m3
+ 0003  B4 09			        mov  ah,9
+ 0005  CD 21			        int  21h
+ 0007  CB			        ret                         ; CB
+ 0008				proc2   endp
+				
+ 0008				far_entry:
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:30:2
+                                                             Page     1-3
+
+
+ 0008  BA 006F R		        mov  dx,offset m5
+ 000B  B4 09			        mov  ah,9
+ 000D  CD 21			        int  21h
+ 000F  B8 4C00			        mov  ax,4c00h
+ 0012  CD 21			        int  21h
+ 0014				code2 ends
+				
+				        end start
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:30:2
+                                                             Symbols-1
+
+
+Segments and Groups:
+
+                N a m e         	Length	 Align	Combine Class
+
+CODE1  . . . . . . . . . . . . .  	0105	PARA	PUBLIC	'CODE'
+CODE2  . . . . . . . . . . . . .  	0014	PARA	PUBLIC	'CODE'
+DATASEG  . . . . . . . . . . . .  	0087	PARA	PUBLIC	'DATA'
+STACKSEG . . . . . . . . . . . .  	0080	PARA	STACK	'STACK'
+
+Symbols:            
+
+                N a m e         	Type	 Value	 Attr
+
+FAR_ENTRY  . . . . . . . . . . .  	L NEAR	0008	CODE2
+
+M1 . . . . . . . . . . . . . . .  	L BYTE	0000	DATASEG
+M2 . . . . . . . . . . . . . . .  	L BYTE	001A	DATASEG
+M3 . . . . . . . . . . . . . . .  	L BYTE	0035	DATASEG
+M4 . . . . . . . . . . . . . . .  	L BYTE	0052	DATASEG
+M5 . . . . . . . . . . . . . . .  	L BYTE	006F	DATASEG
+
+NR1  . . . . . . . . . . . . . .  	L NEAR	00F4	CODE1
+
+PROC2  . . . . . . . . . . . . .  	F PROC	0000	CODE2	Length = 0008
+
+SH1  . . . . . . . . . . . . . .  	L NEAR	0022	CODE1
+START  . . . . . . . . . . . . .  	L NEAR	0000	CODE1
+
+@CPU . . . . . . . . . . . . . .  	TEXT  257		
+@FILENAME  . . . . . . . . . . .  	TEXT  JUMPDEMO		
+@VERSION . . . . . . . . . . . .  	TEXT  510		
+
+
+     73 Source  Lines
+     73 Total   Lines
+     22 Symbols
+
+  47968 + 459276 Bytes symbol space free
+
+      0 Warning Errors
+      0 Severe  Errors

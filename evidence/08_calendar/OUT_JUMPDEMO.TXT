@@ -1,0 +1,5 @@
+1: short jump (EB rel8)
+2: near jump  (E9 rel16)
+3: far call   (9A off seg)
+4: far jump   (EA off seg)
+5: now in CODE2, exit

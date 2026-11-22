@@ -1,0 +1,73 @@
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:30:2
+                                                             Page     1-1
+
+
+				;==============================================
+				================
+				; JUMPBAD.ASM -- 故意演示"条件跳转超出 ±127 字
+				节"的汇编错误
+				;
+				; 8086 的条件跳转只有 2 字节机器码: 操作码 + 1 
+				字节相对位移,
+				; 目标地址范围是 -128 ~ +127. 本程序让 JA 跨过 
+				200 个 NOP,
+				; MASM 5.10 会报: error A2053: Jump out of rang
+				e by ... byte(s)
+				;
+				; 正确改法见 JUMPDEMO.ASM:
+				;       jbe  skip
+				;       jmp  near ptr target      ; 近跳转有 16
+				 位位移, 够远
+				;   skip:
+				;==============================================
+				================
+				
+				        .8086
+ 0000				code1 segment para public 'CODE'
+				        assume cs:code1
+ 0000				start:
+ 0000  B8 0001			        mov  ax,1
+ 0003  3D 0000			        cmp  ax,0
+ 0006  77 D0			        ja   target                 ; <-- 距离 
+				> 127, 汇编失败
+JUMPBAD.ASM(20): error A2053: Jump out of range by 73 byte(s)
+ 0008  00C8[			        db   200 dup(90h)
+	   90			
+			 ]	
+				
+ 00D0				target:
+ 00D0  B8 4C00			        mov  ax,4c00h
+ 00D3  CD 21			        int  21h
+ 00D5				code1 ends
+				        end start
+Microsoft (R) Macro Assembler Version 5.10                  11/22/26 17:30:2
+                                                             Symbols-1
+
+
+Segments and Groups:
+
+                N a m e         	Length	 Align	Combine Class
+
+CODE1  . . . . . . . . . . . . .  	00D5	PARA	PUBLIC	'CODE'
+
+Symbols:            
+
+                N a m e         	Type	 Value	 Attr
+
+START  . . . . . . . . . . . . .  	L NEAR	0000	CODE1
+
+TARGET . . . . . . . . . . . . .  	L NEAR	00D0	CODE1
+
+@CPU . . . . . . . . . . . . . .  	TEXT  257		
+@FILENAME  . . . . . . . . . . .  	TEXT  JUMPBAD		
+@VERSION . . . . . . . . . . . .  	TEXT  510		
+
+
+     26 Source  Lines
+     26 Total   Lines
+      9 Symbols
+
+  48022 + 463317 Bytes symbol space free
+
+      0 Warning Errors
+      1 Severe  Errors

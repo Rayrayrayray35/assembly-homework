@@ -1,0 +1,9 @@
+Microsoft (R) Macro Assembler Version 5.10 
+Copyright (C) Microsoft Corp 1981, 1988.  All rights reserved.
+
+JUMPBAD.ASM(20): error A2053: Jump out of range by 73 byte(s)
+
+  48022 + 463317 Bytes symbol space free
+
+      0 Warning Errors
+      1 Severe  Errors

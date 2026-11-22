@@ -1,0 +1,55 @@
+;==============================================================
+; JUMP_LST_EXCERPT.TXT -- JUMPDEMO.LST / JUMPBAD.LST 关键行
+;==============================================================
+
+一、JUMPDEMO.LST (0 Warning / 0 Severe)
+--------------------------------------------------------------
+ 0000                     code1 segment para public 'CODE'
+ 0000  B8 ---- R          mov  ax,dataseg
+ 0003  8E D8              mov  ds,ax
+ ...
+ 000C  EB 14              jmp  short sh1        ; EB + rel8
+ 000E  0014[              db   20 dup(90h)
+       90
+        ]
+ 0022                     sh1:
+ ...
+ 0029  E9 00F4 R          jmp  near ptr nr1     ; E9 + rel16
+ 002C  00C8[              db   200 dup(90h)
+       90
+        ]
+ 00F4                     nr1:
+ 00F4  9A 0000 ---- R     call far ptr proc2    ; 9A + off16 + seg16
+ 00F9  BA 0052 R          mov  dx,offset m4
+ 00FE  CD 21              int  21h
+ 0100  EA 0008 ---- R     jmp  far ptr far_entry; EA + off16 + seg16
+ 0105                     code1 ends
+
+ 0000                     code2 segment para public 'CODE'
+ 0000                     proc2 proc far
+ 0000  BA 0035 R          mov  dx,offset m3
+ 0005  CD 21              int  21h
+ 0007  CB                 ret                   ; FAR 返回
+ 0008                     far_entry:
+ 0008  BA 006F R          mov  dx,offset m5
+ 000D  CD 21              int  21h
+ 000F  B8 4C00            mov  ax,4c00h
+ 0012  CD 21              int  21h
+
+二、JUMPDEMO.EXE 中的实际字节
+--------------------------------------------------------------
+ 文件偏移 0339H:  E9 C8 00      ; 近跳转, 位移 00C8H = 200
+ 文件偏移 0404H:  9A 00 00 22 00 ; 远调用 0000:0022H
+ 文件偏移 0410H:  EA 08 00 22 00 ; 远跳转 0008:0022H
+
+  (CODE2 在 MAP 中从 0220H 字节开始, 即 0022H 段)
+
+三、JUMPBAD.LST (故意报错)
+--------------------------------------------------------------
+ JUMPBAD.ASM(20): error A2053: Jump out of range by 73 byte(s)
+
+ 原因: JA 与 target 之间隔了 200 个 NOP, 超出 rel8 的 +127.
+ 正确写法见 JUMPDEMO.ASM:
+        jbe  skip
+        jmp  near ptr target
+ skip:

@@ -1,0 +1,108 @@
+;==============================================================
+; MACHINE_CODE.TXT -- 作业 8 机器码与段间跳转实测记录
+;
+; 所有字节均来自 MASM 5.10 生成的 .LST 和最终 .EXE 文件,
+; 不是课本抄来的. 段地址是 DOS 装入后的"相对段值",
+; 实际运行时 DOS 会再加上装入段 (PSP+10H).
+;==============================================================
+
+一、CAL.EXE 的段布局 (CAL.MAP)
+--------------------------------------------------------------
+ Start  Stop   Length  Name       Class
+ 00000H 001FFH 00200H  STACKSEG   STACK      ; 512 B 栈
+ 00200H 0030CH 0010DH  DATASEG    DATA       ; 269 B 数据
+ 00310H 003C0H 000B1H  CODE1      CODE       ; 主程序 + 输入
+ 003D0H 005D3H 00204H  CODE2      CODE       ; 日期计算 + 显示
+ Program entry point at 0031:0000
+
+CODE1 与 CODE2 是两个独立的段, 段地址相差 00BH 段 (= 00B0H 字节).
+
+二、段间远调用 (CAL.LST + CAL.EXE)
+--------------------------------------------------------------
+CAL.LST:
+  0057  9A 0000 ---- R      call far ptr show_calendar
+  ...
+  0028  CB                 ret                  ; show_calendar 是 FAR 过程
+
+CAL.EXE 代码段 1 偏移 0057H 处的实际字节 (文件偏移 0567H):
+  9A 00 00 3D 00
+
+  9A            CALL FAR
+  00 00         目标偏移 = 0000H
+  3D 00         目标段值 = 003DH (即 03D0H 字节, 正好是 CODE2 起点)
+
+执行时 CPU 的动作:
+  PUSH CS
+  PUSH IP
+  CS = 003DH, IP = 0000H
+返回时用 RETF (CB):
+  POP IP
+  POP CS
+
+三、短跳转 / 近跳转 / 远跳转 (JUMPDEMO.EXE)
+--------------------------------------------------------------
+CAL.LST / JUMPDEMO.LST:
+  000C  EB 14              jmp short sh1        ; 短跳转, 8 位位移
+  0029  E9 00F4 R          jmp near ptr nr1     ; 近跳转, 16 位位移
+  00F4  9A 0000 ---- R     call far ptr proc2   ; 远调用
+  0100  EA 0008 ---- R     jmp far ptr far_entry; 远跳转
+  0007  CB                 ret                  ; FAR 过程返回
+
+JUMPDEMO.EXE 实际字节:
+  文件偏移 0339H: E9 C8 00 90 90
+      E9            JMP NEAR
+      C8 00         位移 = 00C8H = 200
+      下一条指令 IP = 002CH, 002CH + 00C8H = 00F4H -> nr1
+
+  文件偏移 0404H: 9A 00 00 22 00
+      CALL FAR 0000:0022H (CODE2 在 0220H 字节 = 0022H 段)
+
+  文件偏移 0410H: EA 08 00 22 00
+      JMP FAR 0008:0022H (CODE2 偏移 0008H = far_entry)
+
+四、跳转指令编码对照表
+--------------------------------------------------------------
+  EB rel8         JMP SHORT      段内, 1 字节相对位移, -128..+127
+  E9 rel16        JMP NEAR       段内, 2 字节相对位移, -32768..+32767
+  E8 rel16        CALL NEAR      段内, 压 IP
+  9A off16 seg16  CALL FAR       段间, 压 CS:IP
+  EA off16 seg16  JMP FAR        段间, 直接换 CS:IP
+  C3              RET NEAR       段内, 弹 IP
+  CB              RET FAR        段间, 弹 IP 和 CS
+
+条件跳转 (8086 只有短形式):
+  72 rel8         JC/JB
+  74 rel8         JE/JZ
+  75 rel8         JNE/JNZ
+  77 rel8         JA/JNBE
+  E3 rel8         JCXZ
+  所有条件跳转都是 2 字节, 目标必须在 -128..+127 字节以内.
+
+本程序里的实例:
+  000F  72 10           jc  year_bad
+  0014  72 0B           jb  year_bad
+  0019  77 06           ja  year_bad
+  004A  E3 1A           jcxz rd_ok
+  0028  EB DB           jmp year_again      ; 短跳转, 位移 DBH = -37
+  001E  EB 0A 90        jmp month_again     ; 短跳转 + MASM 填充的 NOP
+
+五、条件跳转超范围的实际错误 (JUMPBAD.LST / B_BAD.TXT)
+--------------------------------------------------------------
+JUMPBAD.ASM(20): error A2053: Jump out of range by 73 byte(s)
+
+原因: JA 与 target 之间隔了 200 个 NOP, 位移 200 超出 rel8 的 +127.
+改法 (见 JUMPDEMO.ASM):
+        jbe  skip
+        jmp  near ptr target      ; 近跳转有 16 位位移, 够远
+skip:
+
+六、重定位表 (CAL.EXE MZ 头)
+--------------------------------------------------------------
+e_crlc = 2, 重定位项:
+  0031:0001   ; mov ax,dataseg 的立即数
+  0031:005A   ; call far 的段值字 (9A 后面第 3、4 字节)
+
+DOS 装入 EXE 时, 把装入段基址加到这两个字上:
+  数据段实际地址 = 装入段 + 0020H 段
+  CODE2 实际地址 = 装入段 + 003DH 段
+这样即使在 8086 上, 段间调用也能找到正确的 CS.
